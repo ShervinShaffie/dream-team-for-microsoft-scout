@@ -2,6 +2,14 @@
 
 All notable changes to the public edition are documented here. Versions follow the internal build line; this is the first **public** release.
 
+## 4.0.1 — 2026-06-26
+
+Licensing + disclaimer. **No app code or behavior changes** from v4.0.0.
+
+### Added
+- **MIT License** — the project is now formally licensed, with the standard "as is," no-warranty, no-liability terms.
+- **Disclaimer** (README + repo): a personal, community project — **not an official Microsoft product**, not endorsed or supported by Microsoft — provided as-is for personal/demo use, **not production**, and used at your own risk since it acts on your own Microsoft 365 data with your approval.
+
 ## 4.0.0 — 2026-06-26 (first public release)
 
 The first public, GitHub-distributed edition of the Dream Team — a clean-room repackage of the v4.0.0 app for **any** Microsoft Scout user on Windows.

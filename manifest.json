@@ -1,7 +1,8 @@
 {
   "name": "dream-team-for-microsoft-scout",
   "displayName": "The Dream Team for Microsoft Scout",
-  "version": "4.0.0",
+  "version": "4.0.1",
+  "license": "MIT",
   "author": "Shervin Shaffie",
   "audience": "Public - any Microsoft Scout user (Windows)",
   "platform": "Windows only",

@@ -2,13 +2,15 @@
 
 > **Your own team of eight AI digital employees — running locally on Microsoft Scout.**
 
-**Version 4.0.0** · see [CHANGELOG.md](CHANGELOG.md) for what's new.
+**Version 4.0.1** · see [CHANGELOG.md](CHANGELOG.md) for what's new.
 
 The **Dream Team** is a local-first command center plus a **composable team of digital employees** that run on [Microsoft Scout](https://learn.microsoft.com/en-us/microsoft-scout/). They watch your work signals, prep your meetings, draft your replies, capture your body-of-work, and queue anything sensitive for your approval — all on your own machine. Start with the built-in eight, **add your own**, or **remove any but Major**.
 
 > 🪟 **Windows only.** The installer and the local app run on **Windows 10/11**. The setup scripts (`START HERE.cmd`, `Check Setup.cmd`, the `.ps1` files) are Windows-specific and **will not run on macOS or Linux**. See [Platform support](#platform-support).
 
 > 🔒 **Private by design.** Everything runs on `127.0.0.1` and stores to a local database on your machine. This package contains **none** of the author's — or anyone else's — personal data; a clean-room verifier enforces that on every build.
+
+> ⚠️ **Not an official Microsoft product.** A personal, community project shared as-is for personal/demo use — **not** built, endorsed, or supported by Microsoft, and not intended for production. See [Disclaimer & license](#disclaimer--license).
 
 ---
 
@@ -123,6 +125,14 @@ The app itself is pure Python and the skills are plain Markdown, so the *concept
 The app binds to `127.0.0.1` and stores everything in a local SQLite database on your machine. Nothing is sent externally. The team **drafts** — it never sends email, Teams messages, or calendar responses to other people without your explicit approval in the dashboard.
 
 Any **career profile** you add (current/target job description and how your performance is measured, on the Impact Ledger) is especially private: it lives only in your local database, is never included when you re-share the package, and the build's clean-room verifier (`verify-clean.ps1`) fails if any private file or personal email address is ever staged. A copy you give to someone else starts blank.
+
+## Disclaimer & license
+
+**This is a personal, community project — not an official Microsoft product.** It is not built, endorsed, supported, or maintained by Microsoft. "Microsoft Scout," "Microsoft 365," and related names are referenced only to describe the platform this tool runs on. Any views or work here are the author's own and do not represent Microsoft.
+
+**Provided "as is," for personal and demonstration use — not production.** The Dream Team is shared free of charge with **no warranty of any kind**. It can read and act on your own Microsoft 365 data — drafting and, with your explicit approval, sending email and Teams messages and responding to calendar invites — so you use it **at your own risk**: always review what it prepares before relying on it. To the maximum extent permitted by law, the author is **not liable** for any outcome, data loss, missed or mistaken communication, or other damages arising from its use.
+
+Licensed under the [MIT License](LICENSE).
 
 ---
 
