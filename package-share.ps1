@@ -71,46 +71,56 @@ if ($Publish) {
   Write-Host ''
   Write-Host '=== Auto-publish to GitHub ===' -ForegroundColor Cyan
 
-  $gh = Get-Command gh -ErrorAction SilentlyContinue
-  if (-not $gh) { throw 'Auto-publish requested but the GitHub CLI (gh) is not installed. Install it or omit -Publish.' }
-  & gh auth status 1>$null 2>$null
-  if ($LASTEXITCODE -ne 0) { throw 'Auto-publish requested but gh is not authenticated. Run: gh auth login' }
-
-  Push-Location $Root
+  # Native CLI tools (gh/git) legitimately write to stderr for non-error signals (e.g.
+  # "release not found"). Under ErrorActionPreference=Stop that stderr is promoted to a
+  # terminating error, so relax it to Continue here; explicit $LASTEXITCODE checks + throw
+  # statements below still catch real failures.
+  $savedEAP = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
   try {
-    # 1) Commit & push source changes (if this folder is a git repo with changes).
-    if (Test-Path (Join-Path $Root '.git')) {
-      & git add -A
-      $pending = (& git status --porcelain)
-      if ($pending) {
-        & git commit -m ("Release v{0}" -f $Version) | Out-Host
-        Write-Host ("[ok] Committed source changes for v{0}." -f $Version) -ForegroundColor Green
+    $gh = Get-Command gh -ErrorAction SilentlyContinue
+    if (-not $gh) { throw 'Auto-publish requested but the GitHub CLI (gh) is not installed. Install it or omit -Publish.' }
+    & gh auth status 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Auto-publish requested but gh is not authenticated. Run: gh auth login' }
+
+    Push-Location $Root
+    try {
+      # 1) Commit & push source changes (if this folder is a git repo with changes).
+      if (Test-Path (Join-Path $Root '.git')) {
+        & git add -A 2>&1 | Out-Null
+        $pending = (& git status --porcelain)
+        if ($pending) {
+          & git commit -m ("Release v{0}" -f $Version) | Out-Host
+          Write-Host ("[ok] Committed source changes for v{0}." -f $Version) -ForegroundColor Green
+        } else {
+          Write-Host '[ok] No source changes to commit.' -ForegroundColor DarkGray
+        }
+        & git push origin $Branch 2>&1 | Out-Host
+        if ($LASTEXITCODE -ne 0) { Write-Host '[warn] git push failed - continuing to release step; push manually if needed.' -ForegroundColor Yellow }
       } else {
-        Write-Host '[ok] No source changes to commit.' -ForegroundColor DarkGray
+        Write-Host '[warn] Not a git repo - skipping source push, will still create the release.' -ForegroundColor Yellow
       }
-      & git push origin $Branch
-      if ($LASTEXITCODE -ne 0) { Write-Host '[warn] git push failed - continuing to release step; push manually if needed.' -ForegroundColor Yellow }
-    } else {
-      Write-Host '[warn] Not a git repo - skipping source push, will still create the release.' -ForegroundColor Yellow
-    }
 
-    # 2) Create or refresh the GitHub Release for this version, with the ZIP asset.
-    $tag = "v$Version"
-    $title = "The Dream Team for Microsoft Scout $tag"
-    $notesArg = @()
-    if (Test-Path $NotesFile) { $notesArg = @('--notes-file', $NotesFile) } else { $notesArg = @('--notes', ("Release {0}" -f $tag)) }
+      # 2) Create or refresh the GitHub Release for this version, with the ZIP asset.
+      $tag = "v$Version"
+      $title = "The Dream Team for Microsoft Scout $tag"
+      $notesArg = @()
+      if (Test-Path $NotesFile) { $notesArg = @('--notes-file', $NotesFile) } else { $notesArg = @('--notes', ("Release {0}" -f $tag)) }
 
-    & gh release view $tag --repo $Repo 1>$null 2>$null
-    if ($LASTEXITCODE -eq 0) {
-      Write-Host ("[info] Release {0} exists - refreshing its asset." -f $tag)
-      & gh release upload $tag $Zip --repo $Repo --clobber
-      if ($LASTEXITCODE -ne 0) { throw "Failed to upload asset to existing release $tag." }
-    } else {
-      & gh release create $tag $Zip --repo $Repo --title $title @notesArg
-      if ($LASTEXITCODE -ne 0) { throw "Failed to create release $tag." }
+      & gh release view $tag --repo $Repo 2>&1 | Out-Null
+      if ($LASTEXITCODE -eq 0) {
+        Write-Host ("[info] Release {0} exists - refreshing its asset." -f $tag)
+        & gh release upload $tag $Zip --repo $Repo --clobber 2>&1 | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "Failed to upload asset to existing release $tag." }
+      } else {
+        & gh release create $tag $Zip --repo $Repo --title $title @notesArg 2>&1 | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "Failed to create release $tag." }
+      }
+      Write-Host ("[ok] Published {0} to https://github.com/{1}/releases/tag/{2}" -f $tag, $Repo, $tag) -ForegroundColor Green
+    } finally {
+      Pop-Location
     }
-    Write-Host ("[ok] Published {0} to https://github.com/{1}/releases/tag/{2}" -f $tag, $Repo, $tag) -ForegroundColor Green
   } finally {
-    Pop-Location
+    $ErrorActionPreference = $savedEAP
   }
 }
