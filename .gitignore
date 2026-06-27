@@ -1,0 +1,36 @@
+# Runtime + local state (never commit; these are created on each user's own machine)
+app/config.json
+app/data/
+app/*.db
+app/*.db-wal
+app/*.db-shm
+*.db
+*.db-wal
+*.db-shm
+*.pid
+daily-flow-app.pid
+
+# Private career profile (local only)
+profile/
+app/profile/
+
+# Build output
+dist/
+
+# Local label / pointer files
+__LATEST*.txt
+*.install-location
+.install-location
+.writetest
+
+# OS / editor noise
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo

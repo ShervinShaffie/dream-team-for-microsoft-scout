@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>The Dream Team</title>
+  <script>
+    (() => {
+      const KEY = "df-theme";
+      const valid = ["light", "dark", "sepia", "aurora"];
+      const params = new URLSearchParams(window.location.search);
+      let saved = null;
+      try { saved = localStorage.getItem(KEY); } catch (e) {}
+      const param = params.get("scoutTheme");
+      const theme =
+        (valid.includes(saved) && saved) ||
+        (valid.includes(param) && param) ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <span class="hero-eyebrow">Daily Flow · Private command center</span>
+        <h1>The Dream Team</h1>
+        <p class="subtitle">Private command center for your digital employees. Each one runs at the trust level you set — Draft (you send), Assist (you approve, it sends), or Autonomous (it sends). Confidential content always pauses for you.</p>
+      </div>
+      <div class="toolbar">
+        <button class="btn primary" id="attentionBtn">Attention Major</button>
+        <a class="btn" href="#majorChatSection">Chat With Major</a>
+        <a class="btn" href="ledger.html">Impact Ledger</a>
+        <a class="btn" href="activity-log.html">Activity Log</a>
+        <a class="btn" href="architecture.html">Architecture map</a>
+        <div class="theme-switch">
+          <button class="btn" id="themeBtn" aria-haspopup="true" aria-expanded="false" title="Color theme">🎨 Theme</button>
+          <div class="theme-menu" id="themeMenu" role="menu" hidden>
+            <button class="theme-option" data-theme-set="light" role="menuitem"><span class="sw" data-sw="light"></span>Light<span class="check">✓</span></button>
+            <button class="theme-option" data-theme-set="dark" role="menuitem"><span class="sw" data-sw="dark"></span>Dark<span class="check">✓</span></button>
+            <button class="theme-option" data-theme-set="sepia" role="menuitem"><span class="sw" data-sw="sepia"></span>Sepia<span class="check">✓</span></button>
+            <button class="theme-option" data-theme-set="aurora" role="menuitem"><span class="sw" data-sw="aurora"></span>Aurora<span class="check">✓</span></button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="attention-banner" id="chatStatus" role="status" aria-live="polite"></div>
+
+    <section class="metric-strip">
+      <a class="card metric metric-link" href="metric-detail.html?metric=approvals"><span class="metric-icon">✅</span><div class="metric-body"><div class="metric-value" id="approvalCount">0</div><div class="metric-label">pending approvals</div></div></a>
+      <a class="card metric metric-link" href="metric-detail.html?metric=urgent"><span class="metric-icon">⚡</span><div class="metric-body"><div class="metric-value" id="urgentCount">0</div><div class="metric-label">urgent/high items</div></div></a>
+      <a class="card metric metric-link" href="metric-detail.html?metric=tasks"><span class="metric-icon">🛠️</span><div class="metric-body"><div class="metric-value" id="taskCount">0</div><div class="metric-label">open tasks</div></div></a>
+      <a class="card metric metric-link" href="metric-detail.html?metric=results"><span class="metric-icon">📄</span><div class="metric-body"><div class="metric-value" id="draftCount">0</div><div class="metric-label">linked documents</div></div></a>
+    </section>
+
+    <section class="metric-strip">
+      <a class="card metric metric-link" href="metric-detail.html?metric=review"><span class="metric-icon">📨</span><div class="metric-body"><div class="metric-value" id="inboxSignal">—</div><div class="metric-label">review signals</div></div></a>
+      <a class="card metric metric-link" href="metric-detail.html?metric=calendar"><span class="metric-icon">📅</span><div class="metric-body"><div class="metric-value" id="calendarSignal">—</div><div class="metric-label">calendar invites in inbox</div></div></a>
+      <a class="card metric metric-link" href="metric-detail.html?metric=messages"><span class="metric-icon">💬</span><div class="metric-body"><div class="metric-value" id="teamsSignal">—</div><div class="metric-label">Major thread messages</div></div></a>
+      <article class="card metric"><span class="metric-icon">🕒</span><div class="metric-body"><div class="metric-value" id="ledgerUpdated">—</div><div class="metric-label">backend last refresh</div></div></article>
+    </section>
+
+    <section class="team-roster">
+      <div class="section-head">
+        <div>
+          <h2>Your Daily Flow team <span id="civilianBadge" class="civilian-badge" hidden></span></h2>
+          <p class="subtitle">These are your digital team members. Major coordinates the work; each specialist owns a different part of the daily operating loop. Add your own, or remove any but Major.</p>
+        </div>
+        <button class="btn primary" id="addEmployeeBtn" type="button">+ Add Employee</button>
+      </div>
+      <div id="onboardingCards"></div>
+      <div class="employee-grid" id="employees"></div>
+      <div id="removedEmployees"></div>
+    </section>
+
+    <section class="card section" id="guardrailsSection" data-collapsible>
+      <div class="section-head">
+        <div>
+          <h2>🛡️ Guardrails</h2>
+          <p class="subtitle g-sub" id="guardrailsSummary"></p>
+        </div>
+        <button class="collapse-toggle" type="button" aria-expanded="true" title="Collapse"><span class="chev">▾</span></button>
+      </div>
+      <div class="g-body" id="guardrailsBody"></div>
+    </section>
+
+    <section class="card section" id="approvalsSection" data-collapsible>
+      <div class="section-head">
+        <div>
+          <h2>Approval inbox</h2>
+          <p class="subtitle">Grouped by source. Each group's buttons act only on that group, and the legend shows exactly what Approve, Reject, and Defer do for that item type.</p>
+        </div>
+        <button class="collapse-toggle" type="button" aria-expanded="true" title="Collapse"><span class="chev">▾</span></button>
+      </div>
+      <div class="approval-list" id="approvals"></div>
+      <div class="memory-bar" id="memoryBar" hidden></div>
+    </section>
+
+    <section class="card section" id="resultsSection" data-collapsible style="margin-top:20px;">
+      <div class="section-head">
+        <div>
+          <div class="title-row"><h2>Results and drafts prepared</h2><a class="btn" href="results-history.html">Previous</a></div>
+          <p class="subtitle">What the team prepared for you. Outward items show a Send control by level — "Open to send" (Draft), "Send" (Assist), or "Sent ✓" (Autonomous). Confidential items are held for your OK.</p>
+        </div>
+        <button class="collapse-toggle" type="button" aria-expanded="true" title="Collapse"><span class="chev">▾</span></button>
+      </div>
+      <div class="draft-list" id="drafts"></div>
+    </section>
+
+    <section class="card section" id="majorChatSection" data-collapsible style="margin-top:20px;">
+      <div class="section-head">
+        <div>
+          <h2>Chat With Major</h2>
+          <p class="subtitle">Ask Major to get work done directly from the dashboard. Major routes internally and reports progress, completion, blockers, and result locations back in this same thread.</p>
+        </div>
+        <button class="collapse-toggle" type="button" aria-expanded="true" title="Collapse"><span class="chev">▾</span></button>
+      </div>
+      <div class="chat-shell">
+        <form id="chatForm">
+          <label class="field-label" for="chatMessage">What should Major do?</label>
+          <textarea id="chatMessage" placeholder="Example: Research this customer issue, assign the right employee, and report back here with what was done and where the result is."></textarea>
+          <div class="chat-context" id="threadContext"></div>
+          <div class="toolbar" style="margin-top:12px; justify-content:flex-start;">
+            <button class="btn primary" id="sendBtn" type="submit">Send to Major</button>
+            <button class="btn" id="newThreadBtn" type="button">New thread</button>
+          </div>
+        </form>
+        <div>
+          <div class="chat-messages" id="messages"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <dialog class="decision-dialog" id="approvalFeedbackDialog">
+    <form id="approvalFeedbackForm">
+      <div class="section-head">
+        <div>
+          <h2 id="approvalFeedbackTitle">Send decision to Major</h2>
+          <p class="subtitle">Add optional guidance if you want Major to prep, create a document, or do follow-up work after this decision.</p>
+        </div>
+      </div>
+      <div id="approvalFeedbackEffects" class="approval-effects"></div>
+      <label class="field-label" for="approvalFeedbackText">Optional guidance for Major</label>
+      <textarea id="approvalFeedbackText" placeholder="Examples: Prep me for this meeting. Create a one-page briefing doc. Summarize what I need to know."></textarea>
+      <div class="toolbar" style="margin-top:12px; justify-content:flex-start;">
+        <button class="btn primary" id="submitApprovalFeedbackBtn" type="submit">Send decision</button>
+        <button class="btn" id="cancelApprovalFeedbackBtn" type="button">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="decision-dialog add-emp-dialog" id="addEmployeeDialog">
+    <div class="section-head">
+      <div>
+        <h2 id="addEmpTitle">Add an employee</h2>
+        <p class="subtitle" id="addEmpSub">Port one of your own Scout workflows in as a first-class team member.</p>
+      </div>
+      <button class="btn" id="addEmpCloseBtn" type="button">Close</button>
+    </div>
+    <div id="addEmpBody"></div>
+  </dialog>
+
+  <script src="app.js?v=20260625-team"></script>
+</body>
+</html>

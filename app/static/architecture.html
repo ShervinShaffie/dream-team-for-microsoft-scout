@@ -1,0 +1,958 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Dream Team Architecture</title>
+  <script>
+    (() => {
+      const KEY = "df-theme";
+      const valid = ["light", "dark", "sepia", "aurora"];
+      const params = new URLSearchParams(window.location.search);
+      let saved = null;
+      try { saved = localStorage.getItem(KEY); } catch (e) {}
+      const param = params.get("scoutTheme");
+      const theme =
+        (valid.includes(saved) && saved) ||
+        (valid.includes(param) && param) ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+    html[data-theme="aurora"] {
+      color-scheme: dark;
+      --cp-bg: #0b0e1a;
+      --cp-bg-elevated: #11152a;
+      --cp-surface: #161b34;
+      --cp-surface-soft: #1d2340;
+      --cp-border: #2a3157;
+      --cp-border-strong: #3d4675;
+      --cp-text: #e8ecff;
+      --cp-text-muted: #9aa3cc;
+      --cp-text-soft: #bcc3ea;
+      --cp-accent: #8b6cff;
+      --cp-accent-hover: #7a58ff;
+      --cp-accent-soft: rgba(139, 108, 255, 0.16);
+      --cp-accent-fg: #0b0e1a;
+      --cp-success: #3ddc97;
+      --cp-danger: #ff6b81;
+      --cp-warning: #ffb454;
+      --cp-link: #5cc8ff;
+      --cp-shadow: 0 18px 52px rgba(0, 0, 0, 0.55);
+      --cp-overlay: rgba(11, 14, 26, 0.9);
+      --cp-panel: rgba(22, 27, 52, 0.72);
+      --cp-panel-strong: rgba(22, 27, 52, 0.96);
+      --cp-sheen: rgba(124, 140, 255, 0.06);
+      --cp-highlight: rgba(139, 108, 255, 0.18);
+    }
+    html[data-theme="aurora"] body {
+      background:
+        radial-gradient(1100px 560px at 10% -12%, rgba(139, 108, 255, 0.18), transparent 60%),
+        radial-gradient(900px 480px at 100% -4%, rgba(92, 200, 255, 0.12), transparent 55%),
+        var(--cp-bg);
+      background-attachment: fixed;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      @keyframes auroraDriftArch {
+        0%   { transform: translate3d(-2%, -1%, 0) scale(1.04); opacity: 0.85; }
+        50%  { transform: translate3d(3%, 2.5%, 0) scale(1.12); opacity: 1; }
+        100% { transform: translate3d(-2%, -1%, 0) scale(1.04); opacity: 0.85; }
+      }
+      html[data-theme="aurora"] body::before {
+        content: "";
+        position: fixed;
+        inset: -25vmax;
+        z-index: -1;
+        pointer-events: none;
+        background:
+          radial-gradient(42vmax 28vmax at 18% 12%, rgba(139, 108, 255, 0.16), transparent 60%),
+          radial-gradient(38vmax 24vmax at 86% 8%, rgba(92, 200, 255, 0.12), transparent 55%);
+        animation: auroraDriftArch 20s ease-in-out infinite;
+      }
+    }
+    html[data-theme="sepia"] {
+      color-scheme: light;
+      --cp-bg: #efe6d4;
+      --cp-bg-elevated: #f5eddd;
+      --cp-surface: #fbf5e9;
+      --cp-surface-soft: #f1e7d3;
+      --cp-border: #ddcdb0;
+      --cp-border-strong: #b39c78;
+      --cp-text: #3a2e1f;
+      --cp-text-muted: #6f5d44;
+      --cp-text-soft: #5c4c38;
+      --cp-accent: #b5631d;
+      --cp-accent-hover: #9c5215;
+      --cp-accent-soft: rgba(181, 99, 29, 0.10);
+      --cp-accent-fg: #fbf5e9;
+      --cp-success: #4d7c0f;
+      --cp-danger: #b91c1c;
+      --cp-warning: #b45309;
+      --cp-link: #1d6fb8;
+      --cp-shadow: 0 18px 48px rgba(80, 60, 30, 0.18);
+      --cp-overlay: rgba(251, 245, 233, 0.85);
+      --cp-panel: rgba(251, 245, 233, 0.86);
+      --cp-panel-strong: rgba(251, 245, 233, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.5);
+      --cp-highlight: rgba(181, 99, 29, 0.12);
+    }
+    * { box-sizing: border-box; }
+    html { overflow-x: hidden; }
+    body {
+      margin: 0;
+      background: var(--cp-bg);
+      color: var(--cp-text);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow-x: hidden;
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(32px, 4vw, 52px); letter-spacing: -0.04em; line-height: 1; }
+    h2 { font-size: 20px; letter-spacing: -0.02em; }
+    h3 { font-size: 15px; }
+    a { color: var(--cp-link); }
+    .shell { width: min(100%, 1480px); margin: 0 auto; padding: 28px; }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 24px;
+    }
+    .subtitle { color: var(--cp-text-muted); margin-top: 10px; max-width: 760px; line-height: 1.5; }
+    .toolbar { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: var(--cp-surface);
+      color: var(--cp-text);
+      padding: 9px 12px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn.primary { background: var(--cp-accent); color: var(--cp-accent-fg); border-color: var(--cp-accent); }
+    .card {
+      background: var(--cp-surface);
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      box-shadow: 0 0 2px var(--cp-border), 0 1px 2px var(--cp-border);
+    }
+    .section { padding: 18px; margin-bottom: 20px; }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--cp-border);
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: var(--cp-text-muted);
+      background: var(--cp-surface-soft);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+    .flow-step {
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-surface-soft);
+      position: relative;
+      display: grid;
+      gap: 8px;
+      min-height: 142px;
+    }
+    .flow-step:not(:last-child)::after {
+      content: ">";
+      position: absolute;
+      right: -11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--cp-accent);
+      font-weight: 800;
+      background: var(--cp-bg);
+      border: 1px solid var(--cp-border);
+      border-radius: 999px;
+      inline-size: 22px;
+      block-size: 22px;
+      display: grid;
+      place-items: center;
+      z-index: 1;
+    }
+    .step-icon {
+      inline-size: 34px;
+      block-size: 34px;
+      border: 1px solid var(--cp-accent);
+      border-radius: 999px;
+      color: var(--cp-accent);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      background: var(--cp-surface);
+    }
+    .step-title { font-weight: 800; }
+    .step-note { color: var(--cp-text-muted); font-size: 12px; line-height: 1.35; }
+    .orchestration {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(220px, 0.6fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+    }
+    .team-column { display: grid; gap: 10px; }
+    .employee-node {
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-surface-soft);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+    .avatar {
+      inline-size: 38px;
+      block-size: 38px;
+      border-radius: 999px;
+      border: 1px solid var(--cp-accent);
+      color: var(--cp-accent);
+      background: var(--cp-surface);
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+    }
+    .node-role { color: var(--cp-text-muted); font-size: 12px; margin-top: 3px; }
+    .major-core {
+      border: 2px solid var(--cp-accent);
+      background: var(--cp-accent-soft);
+      border-radius: 24px;
+      padding: 22px;
+      text-align: center;
+      display: grid;
+      gap: 12px;
+    }
+    .major-core .avatar {
+      inline-size: 64px;
+      block-size: 64px;
+      margin: 0 auto;
+      background: var(--cp-surface);
+    }
+    .skill-map {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .skill-card {
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-surface-soft);
+      display: grid;
+      gap: 8px;
+    }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .usage-badge {
+      margin-left: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: var(--cp-accent-soft, rgba(139,108,255,0.16));
+      color: var(--cp-accent);
+    }
+    .usage-badge.unused { background: transparent; color: var(--cp-text-muted); font-weight: 400; }
+    .tag {
+      border: 1px solid var(--cp-border);
+      border-radius: 999px;
+      padding: 4px 8px;
+      color: var(--cp-text-muted);
+      background: var(--cp-surface);
+      font-size: 11px;
+    }
+    .skill-link {
+      cursor: pointer;
+      font: inherit;
+      color: var(--cp-accent);
+    }
+    .skill-link:hover, .skill-link:focus-visible {
+      border-color: var(--cp-accent);
+      background: var(--cp-accent-soft);
+      outline: none;
+    }
+    .skill-dialog {
+      width: min(900px, calc(100vw - 32px));
+      max-height: min(820px, calc(100vh - 32px));
+      border: 1px solid var(--cp-border);
+      border-radius: 20px;
+      padding: 0;
+      background: var(--cp-surface);
+      color: var(--cp-text);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+    }
+    .skill-dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
+    .skill-dialog-shell {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      max-height: inherit;
+    }
+    .skill-dialog-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px;
+      border-bottom: 1px solid var(--cp-border);
+    }
+    .skill-dialog-head h2 { margin: 0; }
+    .skill-markdown {
+      margin: 0;
+      padding: 18px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font: 12px/1.55 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      color: var(--cp-text);
+      background: var(--cp-surface-soft);
+    }
+    .layers {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+    .layer {
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-surface-soft);
+      display: grid;
+      gap: 8px;
+    }
+    .layer-number {
+      color: var(--cp-accent);
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+    }
+    .swimlane {
+      display: grid;
+      gap: 8px;
+    }
+    .lane {
+      display: grid;
+      grid-template-columns: 128px repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      align-items: stretch;
+    }
+    .lane-label, .lane-cell {
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      padding: 10px;
+      background: var(--cp-surface-soft);
+      min-width: 0;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .lane-label {
+      background: var(--cp-accent-soft);
+      color: var(--cp-text);
+      font-weight: 800;
+    }
+    .lane-cell strong { display: block; color: var(--cp-text); margin-bottom: 4px; }
+    .quiet { color: var(--cp-text-muted); }
+    .connector-note {
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px dashed var(--cp-border);
+      border-radius: 0.625rem;
+      color: var(--cp-text-muted);
+      background: var(--cp-surface-soft);
+      line-height: 1.4;
+      font-size: 13px;
+    }
+    .operating-timeline {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .loop-card {
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-surface-soft);
+      display: grid;
+      gap: 8px;
+    }
+    .loop-time {
+      color: var(--cp-accent);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+    .loop-title { font-weight: 800; }
+    .loop-detail {
+      color: var(--cp-text-muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    @media (max-width: 1180px) {
+      .flow-grid, .skill-map, .layers, .operating-timeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow-step::after { display: none !important; }
+      .orchestration { grid-template-columns: 1fr; }
+      .major-core { order: -1; }
+      .lane { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .shell { padding: 16px; }
+      .hero, .flow-grid, .skill-map, .layers, .operating-timeline { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <h1>Dream Team Architecture</h1>
+        <p class="subtitle">A visual map of how Major coordinates employees, skills, MCP-style tools, automations, markdown contracts, approvals, and the local app.</p>
+      </div>
+      <nav class="toolbar" aria-label="Architecture navigation">
+        <a class="btn primary" href="index.html">Back to Dream Team</a>
+        <a class="btn" href="activity-log.html">Activity log</a>
+        <a class="btn" href="ledger.html">Impact ledger</a>
+      </nav>
+    </header>
+
+    <section class="card section" aria-labelledby="system-flow-title">
+      <div class="section-head">
+        <div>
+          <h2 id="system-flow-title">End-to-end system flow</h2>
+          <p class="subtitle">Signals enter privately, Major routes, employees execute, approvals gate risk, and outcomes return to the dashboard.</p>
+        </div>
+        <div class="legend">
+          <span class="pill">read-only scan</span>
+          <span class="pill">approval gate</span>
+          <span class="pill">private output</span>
+        </div>
+      </div>
+      <div class="flow-grid">
+        <article class="flow-step">
+          <div class="step-icon">1</div>
+          <div class="step-title">Work signals</div>
+          <div class="step-note">Outlook, calendar, Teams, WorkIQ, files, existing jobs, and dashboard state.</div>
+        </article>
+        <article class="flow-step">
+          <div class="step-icon">2</div>
+          <div class="step-title">Major triage</div>
+          <div class="step-note">Classifies urgency, risk, owner, and whether an Approval inbox card is needed.</div>
+        </article>
+        <article class="flow-step">
+          <div class="step-icon">3</div>
+          <div class="step-title">Specialist route</div>
+          <div class="step-note">Riley, Mina, Reese, Tilly, Dash, Drew, and Logan pick up function-specific work.</div>
+        </article>
+        <article class="flow-step">
+          <div class="step-icon">4</div>
+          <div class="step-title">Skills + tools</div>
+          <div class="step-note">M365 tools, MCP servers, WorkIQ, web tools, and .md skill contracts guide execution.</div>
+        </article>
+        <article class="flow-step">
+          <div class="step-icon">5</div>
+          <div class="step-title">Approval inbox</div>
+          <div class="step-note">Your decisions, plus proactive outward items an employee isn't yet trusted to send on its own, wait for you. Anything you approve is carried out for real.</div>
+        </article>
+        <article class="flow-step">
+          <div class="step-icon">6</div>
+          <div class="step-title">Private results</div>
+          <div class="step-note">Sent replies, drafts, docs, decks, prep briefs, summaries, and links return to Results.</div>
+        </article>
+        <article class="flow-step">
+          <div class="step-icon">7</div>
+          <div class="step-title">Evidence + logs</div>
+          <div class="step-note">Activity log records operations; Work & Impact Ledger records brief completed work plus highlighted outcomes.</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="card section" aria-labelledby="team-map-title">
+      <div class="section-head">
+        <div>
+          <h2 id="team-map-title">Role connection map</h2>
+          <p class="subtitle">Major is the single user-facing coordinator. The seven specialists are function owners behind the scenes.</p>
+        </div>
+      </div>
+      <div class="orchestration">
+        <div class="team-column">
+          <article class="employee-node"><div class="avatar">R</div><div><h3>Riley</h3><div class="node-role">Inbox: email triage, reply drafts, source cleanup</div></div></article>
+          <article class="employee-node"><div class="avatar">M</div><div><h3>Mina</h3><div class="node-role">Meetings: prep, notes, actions, RSVP jobs</div></div></article>
+          <article class="employee-node"><div class="avatar">R</div><div><h3>Reese</h3><div class="node-role">Research: WorkIQ, web, citations, account context</div></div></article>
+          <article class="employee-node"><div class="avatar">T</div><div><h3>Tilly</h3><div class="node-role">Scheduling: availability, conflicts, follow-up timing</div></div></article>
+        </div>
+        <article class="major-core">
+          <div class="avatar">M</div>
+          <h2>Major</h2>
+          <p class="quiet">Orchestrates work, assigns owners, runs sweeps, protects approvals, and reports back in one chat.</p>
+          <div class="tags">
+            <button class="tag skill-link" type="button" data-skill="daily-flow-team">Attention Major</button>
+            <button class="tag skill-link" type="button" data-skill="daily-flow-team">approval router</button>
+            <button class="tag skill-link" type="button" data-skill="daily-flow-team">status pulse</button>
+            <button class="tag skill-link" type="button" data-skill="daily-flow-team">single chat</button>
+          </div>
+        </article>
+        <div class="team-column">
+          <article class="employee-node"><div class="avatar">D</div><div><h3>Dash</h3><div class="node-role">Dashboard: metrics, blockers, approvals, status health</div></div></article>
+          <article class="employee-node"><div class="avatar">D</div><div><h3>Drew</h3><div class="node-role">Content: docs, decks, proposals, customer narratives</div></div></article>
+          <article class="employee-node"><div class="avatar">L</div><div><h3>Logan</h3><div class="node-role">Web/log: activity records, reports, impact evidence</div></div></article>
+        </div>
+      </div>
+      <div class="connector-note">Cross-role examples: Riley + Reese + Drew for researched email replies; Mina + Tilly + Drew for meeting follow-up; Dash + Logan for status and outcome evidence.</div>
+    </section>
+
+    <section class="card section" aria-labelledby="skill-map-title">
+      <div class="section-head">
+        <div>
+          <h2 id="skill-map-title">Behind-the-scenes capability map</h2>
+          <p class="subtitle">Each employee is a named function wrapped around skills, direct M365 tools, MCP-style runtime capabilities, and markdown operating instructions. The badge on each skill shows that employee's share of completed work it accounts for so far; "—" means not used yet.</p>
+        </div>
+      </div>
+      <div class="skill-map" id="skillMap">
+        <article class="skill-card">
+          <h3>Major</h3>
+          <div class="tags"><button class="tag skill-link" type="button" data-skill="daily-flow-team">daily-flow-team.md</button><button class="tag skill-link" type="button" data-skill="automation-self-healer">automation-self-healer</button><span class="tag">automations</span><span class="tag">status pulse</span><span class="tag">SQLite API</span></div>
+        </article>
+        <article class="skill-card">
+          <h3>Riley</h3>
+          <div class="tags"><span class="tag">workiq email</span><span class="tag">Outlook drafts</span><button class="tag skill-link" type="button" data-skill="chat-sweep">chat-sweep</button><button class="tag skill-link" type="button" data-skill="customer-rsvp-check">customer-rsvp-check</button><span class="tag">Approval inbox</span></div>
+        </article>
+        <article class="skill-card">
+          <h3>Mina</h3>
+          <div class="tags"><span class="tag">calendar tools</span><button class="tag skill-link" type="button" data-skill="captions">captions</button><button class="tag skill-link" type="button" data-skill="meeting-followups">meeting-followups</button><button class="tag skill-link" type="button" data-skill="customer-rsvp-check">customer-rsvp-check</button><span class="tag">RSVP jobs</span></div>
+        </article>
+        <article class="skill-card">
+          <h3>Reese</h3>
+          <div class="tags"><button class="tag skill-link" type="button" data-skill="researcher-agent">researcher-agent</button><span class="tag">web fetch</span><span class="tag">WorkIQ</span><span class="tag">source citations</span></div>
+        </article>
+        <article class="skill-card">
+          <h3>Tilly</h3>
+          <div class="tags"><span class="tag">schedule APIs</span><span class="tag">OOF checks</span><button class="tag skill-link" type="button" data-skill="scheduling-option-clipper">scheduling-option-clipper</button><button class="tag skill-link" type="button" data-skill="customer-rsvp-check">customer-rsvp-check</button><span class="tag">calendar risks</span></div>
+        </article>
+        <article class="skill-card">
+          <h3>Dash</h3>
+          <div class="tags"><button class="tag skill-link" type="button" data-skill="daily-flow-team">daily-flow-team.md</button><button class="tag skill-link" type="button" data-skill="automation-self-healer">automation-self-healer</button><span class="tag">dashboard state</span><span class="tag">metrics</span><span class="tag">blockers</span><span class="tag">SSE refresh</span></div>
+        </article>
+        <article class="skill-card">
+          <h3>Drew</h3>
+          <div class="tags"><button class="tag skill-link" type="button" data-skill="docx">docx</button><button class="tag skill-link" type="button" data-skill="pptx">pptx</button><button class="tag skill-link" type="button" data-skill="design">design</button><button class="tag skill-link" type="button" data-skill="demo-iq-experience-builder">demo-iq-builder</button><button class="tag skill-link" type="button" data-skill="customer-ai-demo-website">demo website</button><span class="tag">OneDrive links</span></div>
+        </article>
+        <article class="skill-card">
+          <h3>Logan</h3>
+          <div class="tags"><button class="tag skill-link" type="button" data-skill="customer-ai-demo-website">demo website</button><button class="tag skill-link" type="button" data-skill="daily-flow-team">daily-flow-team.md</button><span class="tag">activity log</span><span class="tag">impact ledger</span><span class="tag">private reports</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="card section" aria-labelledby="runtime-title">
+      <div class="section-head">
+        <div>
+          <h2 id="runtime-title">Runtime architecture layers</h2>
+          <p class="subtitle">The app is local-first: the browser reads the local API; automations and tools write back through explicit records.</p>
+        </div>
+      </div>
+      <div class="layers">
+        <article class="layer"><div class="layer-number">01</div><h3>Local web UI</h3><p class="quiet">Dashboard, Approval inbox, Results, Activity, Impact, Architecture.</p></article>
+        <article class="layer"><div class="layer-number">02</div><h3>Python API</h3><p class="quiet">Routes, validation, link publishing, LA time, SSE refresh.</p></article>
+        <article class="layer"><div class="layer-number">03</div><h3>SQLite state</h3><p class="quiet">Employees, approvals, jobs, events, chat, result links.</p></article>
+        <article class="layer"><div class="layer-number">04</div><h3>Skill contracts</h3><p class="quiet">daily-flow-team.md plus supporting custom skills and rules.</p></article>
+        <article class="layer"><div class="layer-number">05</div><h3>MCP + M365 tools</h3><p class="quiet">Outlook, calendar, Teams, OneDrive, WorkIQ, browser, web, shell.</p></article>
+      </div>
+    </section>
+
+    <section class="card section" aria-labelledby="approval-loop-title">
+      <div class="section-head">
+        <div>
+          <h2 id="approval-loop-title">Approval-safe work loop</h2>
+          <p class="subtitle">The same pattern handles email, meetings, Teams signals, content, and outcome capture.</p>
+        </div>
+      </div>
+      <div class="swimlane">
+        <div class="lane">
+          <div class="lane-label">Email / Teams</div>
+          <div class="lane-cell"><strong>Detect</strong>Ask, mention, deadline, attachment</div>
+          <div class="lane-cell"><strong>Classify</strong>Actionable vs FYI</div>
+          <div class="lane-cell"><strong>Approve</strong>You choose next step</div>
+          <div class="lane-cell"><strong>Act</strong>Riley sends your reply/reaction for real — or drafts if you ask</div>
+          <div class="lane-cell"><strong>Result</strong>Sent reply (or a draft to send) + summary</div>
+        </div>
+        <div class="lane">
+          <div class="lane-label">Meetings</div>
+          <div class="lane-cell"><strong>Detect</strong>Invite, conflict, prep gap</div>
+          <div class="lane-cell"><strong>Enrich</strong>Calendar, headers, schedule risk</div>
+          <div class="lane-cell"><strong>Approve</strong>Accept, reject, defer, prep</div>
+          <div class="lane-cell"><strong>Execute</strong>Mina/Tilly handle approved work</div>
+          <div class="lane-cell"><strong>Result</strong>RSVP status or prep artifact</div>
+        </div>
+        <div class="lane">
+          <div class="lane-label">Research / content</div>
+          <div class="lane-cell"><strong>Detect</strong>Need for context or deliverable</div>
+          <div class="lane-cell"><strong>Route</strong>Reese researches, Drew creates</div>
+          <div class="lane-cell"><strong>Guard</strong>You approve = it's done; proactive sends follow trust level</div>
+          <div class="lane-cell"><strong>Publish</strong>Save to OneDrive Scout folder</div>
+          <div class="lane-cell"><strong>Result</strong>Result link opens from Results + summary</div>
+        </div>
+        <div class="lane">
+          <div class="lane-label">Dashboard / impact</div>
+          <div class="lane-cell"><strong>Observe</strong>Jobs, blockers, approvals</div>
+          <div class="lane-cell"><strong>Refresh</strong>Dash keeps status current</div>
+          <div class="lane-cell"><strong>Separate</strong>Activity vs outcome</div>
+          <div class="lane-cell"><strong>Record</strong>Logan writes only evidence</div>
+          <div class="lane-cell"><strong>Show</strong>Daily log and Impact ledger</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card section" aria-labelledby="operating-rhythm-title">
+      <div class="section-head">
+        <div>
+          <h2 id="operating-rhythm-title">Continuous operating rhythm</h2>
+          <p class="subtitle">The daily cadence that keeps the architecture moving from signal sweep to wrap-up.</p>
+        </div>
+      </div>
+      <div class="operating-timeline" id="operatingTimeline">
+        <div class="connector-note">Loading operating loop...</div>
+      </div>
+    </section>
+
+    <section class="card section" aria-labelledby="skills-flowchart-title">
+      <div class="section-head">
+        <div>
+          <h2 id="skills-flowchart-title">Skills &amp; tools flowchart</h2>
+          <p class="subtitle">How each digital employee connects to skills, tools, and shared infrastructure.</p>
+        </div>
+      </div>
+      <div class="mermaid-container" style="overflow-x:auto; padding:16px 0;">
+        <pre class="mermaid">
+flowchart TB
+  USER(["👤 User"])
+  MAJOR["🎖️ Major — Chief of Staff"]
+
+  USER --> MAJOR
+
+  RILEY["📬 Riley — Inbox Agent"]
+  MINA["📅 Mina — Meeting Agent"]
+  REESE["🔬 Reese — Research Agent"]
+  TILLY["⏰ Tilly — Scheduling Agent"]
+  DASH["📊 Dash — Dashboard Agent"]
+  DREW["✍️ Drew — Content Creator"]
+  LOGAN["🌐 Logan — Web Agent"]
+
+  MAJOR --> RILEY
+  MAJOR --> MINA
+  MAJOR --> REESE
+  MAJOR --> TILLY
+  MAJOR --> DASH
+  MAJOR --> DREW
+  MAJOR --> LOGAN
+
+  subgraph major_skills ["Major's Skills"]
+    direction LR
+    MS1[forge-your-jeeves]
+    MS2[automation-self-healer]
+    MS3["Scout automations (m_* tools)"]
+    MS4[ai-efficiency-self-audit]
+    MS5[skill-author]
+  end
+  MAJOR --> major_skills
+
+  subgraph riley_skills ["Riley's Skills"]
+    direction LR
+    RS1["WorkIQ email tools"]
+    RS2[chat-sweep]
+    RS3[researcher-agent]
+    RS4[scheduling-option-clipper]
+    RS5[meeting-followups]
+  end
+  RILEY --> riley_skills
+
+  subgraph mina_skills ["Mina's Skills"]
+    direction LR
+    MN1[daily-calendar-triage]
+    MN2[meeting-followups]
+    MN3["captions (Live bridge)"]
+    MN4[customer-rsvp-check]
+    MN5["WorkIQ calendar tools"]
+  end
+  MINA --> mina_skills
+
+  subgraph reese_skills ["Reese's Skills"]
+    direction LR
+    RE1[researcher-agent]
+    RE2["web tools (fetch / browser)"]
+    RE3["WorkIQ (people / files)"]
+    RE4[solution-blueprint-factory]
+  end
+  REESE --> reese_skills
+
+  subgraph tilly_skills ["Tilly's Skills"]
+    direction LR
+    TI1[scheduling-option-clipper]
+    TI2[customer-rsvp-check]
+    TI3["WorkIQ calendar (find_meeting_times / get_schedule)"]
+    TI4[daily-calendar-triage]
+    TI5["Teams & email draft tools"]
+  end
+  TILLY --> tilly_skills
+
+  subgraph dash_skills ["Dash's Skills"]
+    direction LR
+    DA1[milestones-report]
+    DA2[ai-efficiency-self-audit]
+    DA3[acr]
+    DA4[copilot-usage]
+    DA5[hok-dashboard]
+  end
+  DASH --> dash_skills
+
+  subgraph drew_skills ["Drew's Skills"]
+    direction LR
+    DR1[docx]
+    DR2[pptx]
+    DR3[microsoft-branding]
+    DR4[solution-blueprint-factory]
+    DR5[demo-iq-experience-builder]
+    DR6["design (AI image gen)"]
+    DR7[xlsx]
+    DR8[acr]
+    DR9[quota]
+  end
+  DREW --> drew_skills
+
+  subgraph logan_skills ["Logan's Skills"]
+    direction LR
+    LO1[customer-ai-demo-website]
+    LO2["design (AI image gen)"]
+    LO3[demo-iq-experience-builder]
+    LO4[excalidraw]
+    LO5["OneDrive / file tools"]
+  end
+  LOGAN --> logan_skills
+
+  subgraph infra ["Shared Infrastructure"]
+    direction LR
+    APP["Daily Flow v2 App (localhost:8787)"]
+    DB[("SQLite DB — Permanent ledger")]
+    WIQ["WorkIQ M365 tools"]
+    CRMSYS["Dataverse / CRM"]
+    PBI["Power BI MCP"]
+    SCOUT["Scout Core (m_* tools)"]
+  end
+
+  major_skills --> APP
+  riley_skills --> WIQ
+  mina_skills --> WIQ
+  reese_skills --> WIQ
+  tilly_skills --> WIQ
+  drew_skills --> APP
+  logan_skills --> APP
+  dash_skills --> APP
+  dash_skills --> PBI
+  APP --> DB
+  MAJOR --> APP
+
+  APPROVE{{"🔒 Autonomy Gate: Auto-allowed vs Approval-required"}}
+  APP --> APPROVE
+        </pre>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:12px; padding:8px 0; font-size:0.8rem; color:var(--cp-text-muted);">
+        <span>🟢 User</span>
+        <span>🔵 Digital Employee</span>
+        <span>⬜ Skill / Tool</span>
+        <span>🔷 Shared Infrastructure</span>
+        <span>🔴 Autonomy Gate</span>
+      </div>
+    </section>
+  </main>
+  <dialog class="skill-dialog" id="skillDialog">
+    <div class="skill-dialog-shell">
+      <div class="skill-dialog-head">
+        <div>
+          <h2 id="skillDialogTitle">Skill markdown</h2>
+          <p class="subtitle">Actual local SKILL.md content used by this capability.</p>
+        </div>
+        <button class="btn" type="button" id="skillDialogClose">Close</button>
+      </div>
+      <pre class="skill-markdown" id="skillMarkdown">Loading...</pre>
+    </div>
+  </dialog>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.documentElement.getAttribute('data-theme') === 'light' ? 'default' : 'dark',
+      flowchart: { curve: 'basis', nodeSpacing: 30, rankSpacing: 50, useMaxWidth: true }
+    });
+  </script>
+  <script>
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+    })[char]);
+    const skillDialog = document.getElementById("skillDialog");
+    const skillDialogTitle = document.getElementById("skillDialogTitle");
+    const skillMarkdown = document.getElementById("skillMarkdown");
+
+    async function openSkill(skillName) {
+      skillDialogTitle.textContent = `/${skillName}`;
+      skillMarkdown.textContent = "Loading actual SKILL.md...";
+      skillDialog.showModal();
+      const response = await fetch(`/api/architecture-skill?name=${encodeURIComponent(skillName)}`, { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) throw new Error(payload.error || `Unable to load /${skillName}`);
+      skillDialogTitle.textContent = payload.title || `/${skillName}`;
+      skillMarkdown.textContent = payload.markdown || "";
+    }
+
+    document.addEventListener("click", async (event) => {
+      const skillButton = event.target.closest("[data-skill]");
+      if (!skillButton) return;
+      try {
+        await openSkill(skillButton.dataset.skill);
+      } catch (error) {
+        skillMarkdown.textContent = error.message;
+      }
+    });
+
+    document.getElementById("skillDialogClose").addEventListener("click", () => skillDialog.close());
+
+    async function loadOperatingLoop() {
+      const response = await fetch("/api/state", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Unable to load operating loop (${response.status})`);
+      return response.json();
+    }
+
+    function renderOperatingLoop(state) {
+      const steps = state.operatingLoop || [];
+      document.getElementById("operatingTimeline").innerHTML = steps.length ? steps.map((step) => `
+        <article class="loop-card">
+          <div class="loop-time">${esc(step.time)}</div>
+          <div class="loop-title">${esc(step.title)}</div>
+          <div class="loop-detail">${esc(step.detail)}</div>
+        </article>
+      `).join("") : `<div class="connector-note">Operating loop unavailable.</div>`;
+    }
+
+    function renderSkillUsage(state) {
+      const usage = (state.skillUsage && state.skillUsage.byEmployee) || {};
+      document.querySelectorAll(".skill-card").forEach((card) => {
+        const emp = (card.querySelector("h3")?.textContent || "").trim();
+        const empUsage = usage[emp] || {};
+        card.querySelectorAll("[data-skill]").forEach((tag) => {
+          const skill = tag.getAttribute("data-skill");
+          const u = empUsage[skill];
+          const old = tag.querySelector(".usage-badge");
+          if (old) old.remove();
+          const badge = document.createElement("span");
+          badge.className = "usage-badge" + (u ? "" : " unused");
+          badge.textContent = u ? `${u.pct}%` : "—";
+          badge.title = u ? `${u.count} completed job(s)` : "not yet used";
+          tag.appendChild(badge);
+        });
+      });
+    }
+
+    function syncCapabilityMap(state) {
+      const map = document.getElementById("skillMap");
+      if (!map) return;
+      const emps = (state.employees || []).filter((e) => (e.status || "active") === "active");
+      const active = new Set(emps.map((e) => e.name));
+      // Hide built-in cards for removed employees so the map reflects the live team.
+      map.querySelectorAll(".skill-card").forEach((card) => {
+        if (card.dataset.custom) return;
+        const name = (card.querySelector("h3")?.textContent || "").trim();
+        card.style.display = active.has(name) ? "" : "none";
+      });
+      // Re-render custom employee cards from data.
+      map.querySelectorAll('.skill-card[data-custom]').forEach((c) => c.remove());
+      emps.filter((e) => e.origin === "custom").forEach((e) => {
+        const card = document.createElement("article");
+        card.className = "skill-card";
+        card.dataset.custom = "1";
+        const tags = (e.skills || []).map((s) => `<span class="tag" data-skill="${esc(s)}">${esc(s)}</span>`).join("")
+          || '<span class="tag">custom workflow</span>';
+        card.innerHTML = `<h3>${esc(e.name)}</h3><div class="tags">${tags}</div>`;
+        map.appendChild(card);
+      });
+    }
+
+    loadOperatingLoop().then((state) => { renderOperatingLoop(state); syncCapabilityMap(state); renderSkillUsage(state); }).catch((error) => {
+      document.getElementById("operatingTimeline").innerHTML = `<div class="connector-note">${esc(error.message)}</div>`;
+    });
+  </script>
+</body>
+</html>

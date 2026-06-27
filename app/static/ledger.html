@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Daily Flow Work & Impact Ledger</title>
+  <script>
+    (() => {
+      const KEY = "df-theme";
+      const valid = ["light", "dark", "sepia", "aurora"];
+      const params = new URLSearchParams(window.location.search);
+      let saved = null;
+      try { saved = localStorage.getItem(KEY); } catch (e) {}
+      const param = params.get("scoutTheme");
+      const theme =
+        (valid.includes(saved) && saved) ||
+        (valid.includes(param) && param) ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <h1>Daily Flow Work & Impact Ledger</h1>
+        <p class="subtitle">Leadership-ready body of work: meetings actively participated in, documents and drafts created, customer/internal collaboration, people worked with, and true impact highlights. The verbose Activity Log remains separate and preserved.</p>
+      </div>
+      <div class="toolbar">
+        <a class="btn" href="index.html">Back to cockpit</a>
+        <a class="btn" href="activity-log.html">Activity Log</a>
+        <button class="btn primary" id="todayBtn">Today</button>
+      </div>
+    </header>
+
+    <main class="grid-page">
+      <section class="card section">
+        <div class="section-head">
+          <button class="btn" id="prevBtn">Previous</button>
+          <div class="month-title" id="monthTitle">Loading</div>
+          <button class="btn" id="nextBtn">Next</button>
+        </div>
+        <div class="calendar" id="calendar"></div>
+      </section>
+
+      <section class="card section">
+        <div class="section-head">
+          <div>
+            <h2 id="selectedTitle">Select a day</h2>
+            <p class="subtitle" id="selectedSubtitle">Click a date on the calendar to review completed work and impact highlights.</p>
+          </div>
+        </div>
+        <div class="view-tabs">
+          <button class="btn active" id="dayViewBtn">Daily work</button>
+          <button class="btn" id="weekViewBtn">Weekly summary</button>
+          <button class="btn" id="monthViewBtn">Monthly summary</button>
+        </div>
+        <div class="summary-strip">
+          <article class="metric"><div class="metric-value" id="eventCount">0</div><div class="metric-label">work items</div></article>
+          <article class="metric"><div class="metric-value" id="taskCount">0</div><div class="metric-label">impact highlights</div></article>
+          <article class="metric"><div class="metric-value" id="approvalCount">0</div><div class="metric-label">people captured</div></article>
+          <article class="metric"><div class="metric-value" id="draftCount">0</div><div class="metric-label">evidence links</div></article>
+        </div>
+        <div class="log-list" id="dayLog"></div>
+      </section>
+    </main>
+
+    <section class="card section" id="careerSection" data-collapsible style="margin-top: 20px;">
+      <div class="section-head">
+        <div>
+          <h2>Your career profile <span class="lock-badge">🔒 Private to this machine — never shared</span></h2>
+          <p class="subtitle">Paste or upload your current and target job descriptions and how your company measures performance. The team uses this to capture and frame the evidence your review actually rewards. Stored locally only — never included in any shared package. Supported uploads: <strong>.txt, .md, .docx</strong>.</p>
+        </div>
+        <button class="collapse-toggle" type="button" aria-expanded="true" title="Collapse"><span class="chev">▾</span></button>
+      </div>
+      <div class="career-grid">
+        <label class="career-field">
+          <span class="career-label">Current role / job description</span>
+          <textarea id="cpCurrent" placeholder="Paste your current job description or core responsibilities…"></textarea>
+          <span class="upload-row"><input type="file" id="cpCurrentFile" accept=".txt,.md,.markdown,.docx"><span class="upload-hint">Upload .txt, .md, or .docx</span></span>
+        </label>
+        <label class="career-field">
+          <span class="career-label">Target / future role <span class="career-sub">— where you're growing to</span></span>
+          <textarea id="cpTarget" placeholder="Paste the job description or expectations for the role you're growing into…"></textarea>
+          <span class="upload-row"><input type="file" id="cpTargetFile" accept=".txt,.md,.markdown,.docx"><span class="upload-hint">Upload .txt, .md, or .docx</span></span>
+        </label>
+        <label class="career-field full">
+          <span class="career-label">How my company measures performance <span class="career-sub">— impact definition, metrics, and goals you're rated against</span></span>
+          <textarea id="cpRubric" placeholder="Paste how impact is defined, what metrics are measured, and the goals/objectives you're evaluated against…"></textarea>
+          <span class="upload-row"><input type="file" id="cpRubricFile" accept=".txt,.md,.markdown,.docx"><span class="upload-hint">Upload .txt, .md, or .docx</span></span>
+        </label>
+      </div>
+      <div class="career-actions">
+        <button class="btn primary" id="cpSaveBtn" type="button">Save profile</button>
+        <span class="career-status" id="cpStatus"></span>
+      </div>
+      <div id="coverageBlock"></div>
+    </section>
+
+    <section class="card section" id="rippleSection" data-collapsible style="margin-top: 20px;">
+      <div class="section-head">
+        <div>
+          <h2>Adoption Ripple</h2>
+          <p class="subtitle">How your Dream Team work is spreading. Every number below is backed by captured ledger evidence — the receipts are listed underneath.</p>
+        </div>
+        <button class="collapse-toggle" type="button" aria-expanded="true" title="Collapse"><span class="chev">▾</span></button>
+      </div>
+      <div id="rippleBody"></div>
+    </section>
+
+    <section class="card section" style="margin-top: 20px;">
+      <div class="section-head">
+        <div>
+          <h2>Export leadership report</h2>
+          <p class="subtitle">Choose a date range and export the same work-and-impact data for leadership updates or performance review prep.</p>
+        </div>
+      </div>
+      <div class="pill-row">
+        <label class="pill">Start <input id="exportStart" type="date"></label>
+        <label class="pill">End <input id="exportEnd" type="date"></label>
+        <button class="btn primary" id="exportMarkdownBtn">Export Markdown</button>
+        <button class="btn" id="exportJsonBtn">Export JSON</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+    })[char]);
+    const calendar = document.getElementById("calendar");
+    const monthTitle = document.getElementById("monthTitle");
+    const selectedTitle = document.getElementById("selectedTitle");
+    const selectedSubtitle = document.getElementById("selectedSubtitle");
+    const dayLog = document.getElementById("dayLog");
+    const exportStart = document.getElementById("exportStart");
+    const exportEnd = document.getElementById("exportEnd");
+    const counts = {
+      highlights: document.getElementById("eventCount"),
+      support: document.getElementById("taskCount"),
+      approvals: document.getElementById("approvalCount"),
+      drafts: document.getElementById("draftCount")
+    };
+    const tabButtons = {
+      day: document.getElementById("dayViewBtn"),
+      week: document.getElementById("weekViewBtn"),
+      month: document.getElementById("monthViewBtn")
+    };
+    const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    let state = null;
+    let selectedDate = new Date().toLocaleDateString("en-CA");
+    let visibleMonth = new Date();
+    let viewMode = "day";
+
+    async function loadState() {
+      const response = await fetch("/api/impact-ledger", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Unable to load work ledger (${response.status})`);
+      return response.json();
+    }
+
+    function dateKey(value) {
+      return value ? new Date(value).toLocaleDateString("en-CA") : selectedDate;
+    }
+
+    function parseLink(value) {
+      if (!value) return null;
+      if (typeof value === "object") return value;
+      try {
+        const parsed = JSON.parse(value);
+        if (typeof parsed === "string" && /^https?:\/\//i.test(parsed)) return { href: parsed, label: "Open evidence" };
+        return typeof parsed === "object" ? parsed : null;
+      } catch {
+        return /^https?:\/\//i.test(String(value)) ? { href: String(value), label: "Open evidence" } : null;
+      }
+    }
+
+    function ledgerEntries() {
+      return (state.highlights || state.impactLedger?.highlights || []).filter(item => item.reportable !== false);
+    }
+
+    function entriesByDate() {
+      const map = new Map();
+      for (const highlight of ledgerEntries()) {
+        const key = highlight.date || selectedDate;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(highlight);
+      }
+      return map;
+    }
+
+    function selectedWeekRange() {
+      const base = new Date(`${selectedDate}T12:00:00`);
+      const day = base.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      const start = new Date(base);
+      start.setDate(base.getDate() + diff);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      return { start, end };
+    }
+
+    function inRange(item, start, end) {
+      const value = new Date(`${item.date || selectedDate}T12:00:00`);
+      return value >= start && value <= end;
+    }
+
+    function selectedPeriodEntries(mode) {
+      const entries = ledgerEntries();
+      if (mode === "week") {
+        const { start, end } = selectedWeekRange();
+        return entries.filter(item => inRange(item, start, end));
+      }
+      if (mode === "month") {
+        const monthKey = selectedDate.slice(0, 7);
+        return entries.filter(item => String(item.date || "").startsWith(monthKey));
+      }
+      return entries.filter(item => (item.date || selectedDate) === selectedDate);
+    }
+
+    function setViewMode(mode) {
+      viewMode = mode;
+      Object.entries(tabButtons).forEach(([key, button]) => button.classList.toggle("active", key === mode));
+      renderDetail();
+      renderRipple();
+    }
+
+    function renderCalendar() {
+      const year = visibleMonth.getFullYear();
+      const month = visibleMonth.getMonth();
+      const byDate = entriesByDate();
+      monthTitle.textContent = visibleMonth.toLocaleDateString([], { month: "long", year: "numeric" });
+      const first = new Date(year, month, 1);
+      const last = new Date(year, month + 1, 0);
+      const cells = weekdays.map(day => `<div class="weekday">${day}</div>`);
+      for (let index = 0; index < first.getDay(); index++) cells.push(`<div class="day empty"></div>`);
+      for (let day = 1; day <= last.getDate(); day++) {
+        const key = new Date(year, month, day).toLocaleDateString("en-CA");
+        const count = (byDate.get(key) || []).filter(item => item.reportable !== false).length;
+        cells.push(`
+          <button class="day ${key === selectedDate ? "selected" : ""}" data-date="${key}">
+            <span class="day-number">${day}</span>
+            <span class="day-count">${count ? `${count} work item${count === 1 ? "" : "s"}` : "No work"}</span>
+          </button>
+        `);
+      }
+      calendar.innerHTML = cells.join("");
+      calendar.querySelectorAll("[data-date]").forEach(button => {
+        button.addEventListener("click", () => {
+          selectedDate = button.dataset.date;
+          setViewMode("day");
+          render();
+        });
+      });
+    }
+
+    function itemBulletHtml(item) {
+      const link = parseLink(item.link);
+      const href = link?.href || "";
+      const evidence = href ? ` <a href="${esc(href)}" target="_blank" rel="noopener">Evidence</a>` : "";
+      const people = Array.isArray(item.people) && item.people.length ? item.people.join(", ") : "";
+      const customer = item.customer || "";
+      const audience = [customer, people].filter(Boolean).join("; ");
+      const audienceText = audience ? ` for ${audience}` : "";
+      const work = item.work || item.impact || "Completed reportable work.";
+      const why = item.impact ? ` Impact: ${item.impact}` : "";
+      return `
+        <li>
+          <strong>${esc(item.title || "Work completed")}</strong>${esc(audienceText)} - ${esc(work)}${esc(why)}${evidence}
+        </li>
+      `;
+    }
+
+    function impactItems(entries) {
+      return entries.filter(item => item.impact || ["highlight", "significant"].includes(String(item.impactLevel || "")) || String(item.category || "").includes("impact"));
+    }
+
+    function impactMetrics(entries) {
+      const people = new Set(entries.flatMap(item => Array.isArray(item.people) ? item.people : []));
+      counts.highlights.textContent = entries.length;
+      counts.support.textContent = impactItems(entries).length;
+      counts.approvals.textContent = people.size;
+      counts.drafts.textContent = entries.filter(item => parseLink(item.link)).length;
+    }
+
+    function daySectionHtml(date, entries) {
+      const title = date === "undated"
+        ? "Undated work"
+        : new Date(`${date}T12:00:00`).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+      return `
+        <article class="item">
+          <h3>${esc(title)}</h3>
+          <ul class="preview">
+            ${entries.map(itemBulletHtml).join("")}
+          </ul>
+        </article>
+      `;
+    }
+
+    function groupedSectionsHtml(entries) {
+      const grouped = groupByDate(entries);
+      return Object.keys(grouped)
+        .sort((a, b) => b.localeCompare(a))
+        .map(date => daySectionHtml(date, grouped[date]))
+        .join("");
+    }
+
+    function entriesForRange(startDate, endDate) {
+      const start = startDate ? new Date(`${startDate}T00:00:00`) : new Date("1900-01-01T00:00:00");
+      const end = endDate ? new Date(`${endDate}T23:59:59`) : new Date("2999-12-31T23:59:59");
+      return ledgerEntries().filter(item => {
+        const value = new Date(`${item.date || selectedDate}T12:00:00`);
+        return value >= start && value <= end;
+      });
+    }
+
+    function groupByDate(entries) {
+      return entries.reduce((acc, item) => {
+        const key = item.date || "undated";
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(item);
+        return acc;
+      }, {});
+    }
+
+    function markdownForEntries(entries, startDate, endDate) {
+      const lines = [`# Work and Impact Report`, ``, `Date range: ${startDate || "all"} to ${endDate || "all"}`, ``];
+      const grouped = groupByDate(entries);
+      for (const date of Object.keys(grouped).sort()) {
+        lines.push(`## ${date}`, "");
+        for (const item of grouped[date]) {
+          const link = parseLink(item.link);
+          const people = Array.isArray(item.people) && item.people.length ? item.people.join(", ") : "";
+          const audience = [item.customer, people].filter(Boolean).join("; ");
+          const audienceText = audience ? ` for ${audience}` : "";
+          const impact = item.impact ? ` Impact: ${item.impact}` : "";
+          const evidence = link?.href ? ` Evidence: [${link.label || "Open evidence"}](${link.href})` : "";
+          lines.push(`- **${item.title || "Work completed"}**${audienceText} - ${item.work || item.impact || "Work captured."}${impact}${evidence}`);
+        }
+        lines.push("");
+      }
+      if (!entries.length) lines.push("No work ledger entries captured for this range.");
+      return lines.join("\n");
+    }
+
+    function downloadFile(name, type, content) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = name;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportReport(format) {
+      const start = exportStart.value;
+      const end = exportEnd.value;
+      const entries = entriesForRange(start, end);
+      const suffix = `${start || "all"}_to_${end || "all"}`;
+      if (format === "json") {
+        downloadFile(`work-impact-report-${suffix}.json`, "application/json", JSON.stringify({ start, end, entries }, null, 2));
+        return;
+      }
+      downloadFile(`work-impact-report-${suffix}.md`, "text/markdown", markdownForEntries(entries, start, end));
+    }
+
+    function renderPeriod(mode) {
+      const entries = selectedPeriodEntries(mode);
+      if (mode === "week") {
+        const { start, end } = selectedWeekRange();
+        selectedTitle.textContent = `Week of ${start.toLocaleDateString([], { month: "long", day: "numeric" })}`;
+        selectedSubtitle.textContent = `${start.toLocaleDateString([], { month: "short", day: "numeric" })} - ${end.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}: rollup of distinct completed work, with impact called out separately.`;
+      } else {
+        selectedTitle.textContent = new Date(`${selectedDate.slice(0, 7)}-01T12:00:00`).toLocaleDateString([], { month: "long", year: "numeric" });
+        selectedSubtitle.textContent = "Monthly leadership rollup of distinct completed work, avoiding overlap with the daily log while preserving the details below.";
+      }
+      impactMetrics(entries);
+      dayLog.innerHTML = entries.length ? groupedSectionsHtml(entries) : `<div class="empty">No completed work ledger entries have been captured for this ${mode} yet.</div>`;
+    }
+
+    function renderDay() {
+      const byDate = entriesByDate();
+      const highlights = (byDate.get(selectedDate) || []).filter(item => item.reportable !== false);
+      selectedTitle.textContent = new Date(`${selectedDate}T12:00:00`).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+      selectedSubtitle.textContent = "One manager-scan bullet per reportable activity, with evidence when available.";
+      impactMetrics(highlights);
+      dayLog.innerHTML = highlights.length ? daySectionHtml(selectedDate, highlights) : `<div class="empty">No completed work ledger entries have been captured for this day yet. The full Activity Log is still preserved separately.</div>`;
+    }
+
+    function renderDetail() {
+      if (viewMode === "week") return renderPeriod("week");
+      if (viewMode === "month") return renderPeriod("month");
+      renderDay();
+    }
+
+    function render() {
+      renderCalendar();
+      renderDetail();
+      renderRipple();
+    }
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1);
+      renderCalendar();
+    });
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1);
+      renderCalendar();
+    });
+    document.getElementById("todayBtn").addEventListener("click", () => {
+      selectedDate = new Date().toLocaleDateString("en-CA");
+      visibleMonth = new Date();
+      setViewMode("day");
+      render();
+    });
+    tabButtons.day.addEventListener("click", () => setViewMode("day"));
+    tabButtons.week.addEventListener("click", () => setViewMode("week"));
+    tabButtons.month.addEventListener("click", () => setViewMode("month"));
+    document.getElementById("exportMarkdownBtn").addEventListener("click", () => exportReport("markdown"));
+    document.getElementById("exportJsonBtn").addEventListener("click", () => exportReport("json"));
+
+    const cp = {
+      current: document.getElementById("cpCurrent"),
+      target: document.getElementById("cpTarget"),
+      rubric: document.getElementById("cpRubric"),
+      status: document.getElementById("cpStatus")
+    };
+
+    function renderCareerProfile() {
+      const p = (state && state.careerProfile) || {};
+      if (cp.current) cp.current.value = p.currentRole || "";
+      if (cp.target) cp.target.value = p.targetRole || "";
+      if (cp.rubric) cp.rubric.value = p.reviewRubric || "";
+      if (cp.status) {
+        cp.status.textContent = p.updatedAt
+          ? `Saved ${new Date(p.updatedAt).toLocaleString()} — stored on this machine only.`
+          : "Not saved yet — your entries stay on this machine and are never shared.";
+        cp.status.className = "career-status";
+      }
+    }
+
+    async function saveCareerProfile() {
+      try {
+        const body = {
+          currentRole: cp.current ? cp.current.value : "",
+          targetRole: cp.target ? cp.target.value : "",
+          reviewRubric: cp.rubric ? cp.rubric.value : ""
+        };
+        const res = await fetch("/api/career-profile", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok || data.ok === false) throw new Error(data.error || res.statusText);
+        cp.status.textContent = "Saved ✓ — refreshing your focus map…";
+        cp.status.className = "career-status ok";
+        state = await loadState();
+        renderCareerProfile();
+        renderCoverage();
+        cp.status.textContent = "Saved ✓ — stored locally on this machine only.";
+        cp.status.className = "career-status ok";
+      } catch (err) {
+        cp.status.textContent = `Could not save: ${err.message}`;
+        cp.status.className = "career-status err";
+      }
+    }
+
+    async function uploadToField(file, textarea) {
+      if (!file || !textarea) return;
+      cp.status.textContent = `Reading ${file.name}…`;
+      cp.status.className = "career-status";
+      try {
+        const buf = await file.arrayBuffer();
+        const res = await fetch("/api/career-profile/extract", {
+          method: "POST",
+          headers: { "X-Filename": encodeURIComponent(file.name), "Content-Type": "application/octet-stream" },
+          body: buf
+        });
+        const data = await res.json();
+        if (!res.ok || data.ok === false) throw new Error(data.error || res.statusText);
+        const existing = textarea.value.trim();
+        textarea.value = existing ? `${existing}\n\n${data.text}` : data.text;
+        cp.status.textContent = `Loaded ${file.name} — review the text, then Save profile.`;
+        cp.status.className = "career-status ok";
+      } catch (err) {
+        cp.status.textContent = `Could not read ${file.name}: ${err.message}`;
+        cp.status.className = "career-status err";
+      }
+    }
+
+    function bindUpload(inputId, textarea) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      input.addEventListener("change", () => {
+        const file = input.files && input.files[0];
+        if (file) uploadToField(file, textarea);
+        input.value = "";
+      });
+    }
+
+    function renderCoverage() {
+      const block = document.getElementById("coverageBlock");
+      if (!block) return;
+      const cov = (state && state.coverage) || { available: false, criteria: [] };
+      if (!cov.available || !(cov.criteria || []).length) { block.innerHTML = ""; return; }
+      const rows = cov.criteria.map(c => {
+        const cls = c.level === "strong" ? "cov-strong" : (c.level === "light" ? "cov-light" : "cov-none");
+        const label = c.level === "strong" ? "Strong" : (c.level === "light" ? "Light" : "No evidence yet");
+        const ex = c.examples && c.examples.length ? `<div class="coverage-ex">e.g. ${c.examples.map(esc).join(" · ")}</div>` : "";
+        const count = c.matches ? `${c.matches} item${c.matches === 1 ? "" : "s"} captured${c.impactMatches ? `, ${c.impactMatches} impact` : ""}` : "nothing captured yet";
+        return `<div class="coverage-row"><div><div class="coverage-crit">${esc(c.criterion)}</div><div class="coverage-ex">${esc(count)}</div>${ex}</div><span class="cov-chip ${cls}">${label}</span></div>`;
+      }).join("");
+      block.innerHTML = `
+        <div class="coverage-wrap">
+          <h3 style="margin:0 0 6px;">Coverage vs. expectations</h3>
+          <p class="coverage-note">A heuristic match of your captured work against ${esc(cov.basedOn || "your criteria")}, so you can see where your evidence is strong vs. light and focus to exceed. It's a focus aid, not a score — and only you can see it.</p>
+          <div class="coverage-list">${rows}</div>
+        </div>`;
+    }
+
+    function rippleFmtD(d) {
+      return d.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+    }
+
+    function rippleWindow() {
+      // Returns { start, end, label, matchCal, range } — start/end are Date bounds (or null for all-time).
+      let matchCal = false, range = "90";
+      try { matchCal = localStorage.getItem("df-ripple-matchcal") === "1"; } catch (e) {}
+      try { range = localStorage.getItem("df-ripple-range") || "90"; } catch (e) {}
+      if (matchCal) {
+        if (viewMode === "week") {
+          const { start, end } = selectedWeekRange();
+          const s = new Date(start); s.setHours(0, 0, 0, 0);
+          const e = new Date(end); e.setHours(23, 59, 59, 999);
+          return { start: s, end: e, matchCal, range, label: `the week of ${rippleFmtD(s)} – ${rippleFmtD(e)}` };
+        }
+        if (viewMode === "month") {
+          const base = new Date(`${selectedDate.slice(0, 7)}-01T12:00:00`);
+          const s = new Date(base.getFullYear(), base.getMonth(), 1, 0, 0, 0, 0);
+          const e = new Date(base.getFullYear(), base.getMonth() + 1, 0, 23, 59, 59, 999);
+          return { start: s, end: e, matchCal, range, label: base.toLocaleDateString([], { month: "long", year: "numeric" }) };
+        }
+        const d = new Date(`${selectedDate}T12:00:00`);
+        const s = new Date(d); s.setHours(0, 0, 0, 0);
+        const e = new Date(d); e.setHours(23, 59, 59, 999);
+        return { start: s, end: e, matchCal, range, label: d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" }) };
+      }
+      if (range === "all") return { start: null, end: null, matchCal, range, label: "all time" };
+      const days = parseInt(range, 10) || 90;
+      const e = new Date(); e.setHours(23, 59, 59, 999);
+      const s = new Date(); s.setDate(s.getDate() - (days - 1)); s.setHours(0, 0, 0, 0);
+      const human = days >= 365 ? `${Math.round(days / 365)} year` : `${days} days`;
+      return { start: s, end: e, matchCal, range, label: `the last ${human} (${rippleFmtD(s)} – ${rippleFmtD(e)})` };
+    }
+
+    function renderRipple() {
+      const body = document.getElementById("rippleBody");
+      if (!body) return;
+      const r = (state && state.ripple) || {};
+      const cad = (state && state.cadences) || { recurring: [], newThisWeek: [] };
+      const allItems = r.items || [];
+      if (!r.adoptionEntries) {
+        body.innerHTML = `<div class="empty">No adoption or enablement work has been captured yet. As the team logs colleagues onboarded, workshops delivered, mentoring, or shared IP, it shows up here with evidence.</div>`;
+        return;
+      }
+      const win = rippleWindow();
+      const inWindow = (it) => {
+        if (!win.start || !win.end) return true; // all time
+        if (!it.date) return false;              // undated excluded from bounded windows
+        const d = new Date(`${it.date}T12:00:00`);
+        return d >= win.start && d <= win.end;
+      };
+      const items = allItems.filter(inWindow).sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+      // Recompute the headline numbers for the selected window from the evidence itself.
+      const peopleSet = new Set();
+      const orgSet = new Set();
+      let sessions = 0;
+      items.forEach((it) => {
+        (it.people || []).forEach((p) => { if (p) peopleSet.add(p.toLowerCase()); });
+        if (it.org) orgSet.add(it.org.toLowerCase());
+        if (it.session) sessions += 1;
+      });
+      const orgList = [...new Set(items.map((it) => it.org).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      const peopleList = [...new Map(items.flatMap((it) => it.people || []).filter(Boolean).map((p) => [p.toLowerCase(), p])).values()].sort((a, b) => a.localeCompare(b));
+
+      const rangeChips = ["30", "90", "365", "all"].map((v) => {
+        const label = v === "all" ? "All time" : (v === "365" ? "12 months" : `${v} days`);
+        const active = (!win.matchCal && win.range === v) ? " active" : "";
+        const dim = win.matchCal ? " disabled" : "";
+        return `<button class="btn ripple-chip-btn${active}${dim}" data-range="${v}"${win.matchCal ? " disabled" : ""}>${label}</button>`;
+      }).join("");
+
+      const controls = `
+        <div class="ripple-controls">
+          <div class="view-tabs" style="margin:0;">${rangeChips}</div>
+          <label class="ripple-matchcal"><input type="checkbox" id="rippleMatchCal" ${win.matchCal ? "checked" : ""}> Match the calendar selection above</label>
+        </div>
+        <div class="ripple-range-label">📅 Showing: <strong>${esc(win.label)}</strong> · ${items.length} adoption item${items.length === 1 ? "" : "s"}${win.matchCal ? " (follows the Daily / Weekly / Monthly view above)" : ""}</div>`;
+
+      if (!items.length) {
+        body.innerHTML = controls + `<div class="empty" style="margin-top:12px;">No adoption activity in this range. ${win.matchCal ? "Pick another day/week/month above, or" : "Widen the window, or"} switch to <strong>All time</strong> to see everything captured (${r.adoptionEntries} item${r.adoptionEntries === 1 ? "" : "s"}).</div>`;
+        wireRippleControls();
+        return;
+      }
+
+      const orgChips = orgList.map((o) => `<span class="ripple-chip">${esc(o)}</span>`).join("");
+      const peopleChips = peopleList.map((p) => `<span class="ripple-chip">${esc(p)}</span>`).join("");
+      const recurring = (cad.recurring || []).slice(0, 8).map((c) => `<li>${esc(c.label || "")} <span class="muted">· ${c.weeks}w</span></li>`).join("");
+      const receipts = items.map((it) => {
+        const link = it.link ? ` <a href="${esc(it.link)}" target="_blank" rel="noopener">Evidence</a>` : "";
+        const date = it.date ? new Date(`${it.date}T12:00:00`).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "undated";
+        const meta = [it.org, date].filter(Boolean).map(esc).join(" · ");
+        const tags = [];
+        if (it.session) tags.push(`<span class="ripple-tag session">session</span>`);
+        const ppl = (it.people && it.people.length)
+          ? `<span class="ripple-tag">${esc(it.people.slice(0, 4).join(", "))}${it.people.length > 4 ? ` +${it.people.length - 4}` : ""}</span>` : "";
+        return `<div class="ripple-item"><div class="ripple-item-top"><span class="ripple-item-title">${esc(it.title || "Adoption work")}</span><span class="ripple-item-meta">${meta}</span>${link}</div><div class="ripple-item-tags">${tags.join("")}${ppl}</div></div>`;
+      }).join("");
+
+      body.innerHTML = controls + `
+        <div class="summary-strip" style="margin-top:14px;">
+          <article class="metric"><div class="metric-value">${peopleSet.size}</div><div class="metric-label">people influenced</div></article>
+          <article class="metric"><div class="metric-value">${orgSet.size}</div><div class="metric-label">orgs / teams touched</div></article>
+          <article class="metric"><div class="metric-value">${sessions}</div><div class="metric-label">sessions / workshops</div></article>
+          <article class="metric"><div class="metric-value">${items.length}</div><div class="metric-label">adoption items</div></article>
+        </div>
+        <div class="ripple-sub">
+          <div><h4 class="ripple-h">Orgs / teams (${orgList.length})</h4><div class="ripple-chips">${orgChips || "<span class='muted'>None in range</span>"}</div></div>
+          <div><h4 class="ripple-h">Cadences you now ship <span class="muted" style="text-transform:none;letter-spacing:0;">· all-time recurring</span></h4><ul class="cadence-list" style="margin:0;padding-left:16px;">${recurring || "<li class='muted'>None detected yet</li>"}</ul></div>
+        </div>
+        <div class="ripple-sub" style="grid-template-columns:1fr;">
+          <div><h4 class="ripple-h">People influenced (${peopleList.length})</h4><div class="ripple-chips">${peopleChips || "<span class='muted'>None in range</span>"}</div></div>
+        </div>
+        <div class="ripple-receipts"><h4 class="ripple-h">Evidence — ${items.length} adoption item${items.length === 1 ? "" : "s"} in this range</h4>${receipts}</div>`;
+      wireRippleControls();
+    }
+
+    function wireRippleControls() {
+      document.querySelectorAll("#rippleBody .ripple-chip-btn").forEach((btn) => {
+        if (btn.disabled) return;
+        btn.addEventListener("click", () => {
+          try { localStorage.setItem("df-ripple-range", btn.dataset.range); } catch (e) {}
+          renderRipple();
+        });
+      });
+      const cb = document.getElementById("rippleMatchCal");
+      if (cb) cb.addEventListener("change", () => {
+        try { localStorage.setItem("df-ripple-matchcal", cb.checked ? "1" : "0"); } catch (e) {}
+        renderRipple();
+      });
+    }
+
+    function setupCollapsibles() {
+      document.querySelectorAll("section[data-collapsible]").forEach(sec => {
+        const id = sec.id;
+        const toggle = sec.querySelector(".collapse-toggle");
+        if (!id || !toggle) return;
+        const key = `df-collapse-${id}`;
+        let collapsed = false;
+        try { collapsed = localStorage.getItem(key) === "1"; } catch (e) {}
+        const apply = () => {
+          sec.classList.toggle("collapsed", collapsed);
+          toggle.setAttribute("aria-expanded", String(!collapsed));
+          toggle.title = collapsed ? "Expand" : "Collapse";
+        };
+        apply();
+        toggle.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          collapsed = !collapsed;
+          try { localStorage.setItem(key, collapsed ? "1" : "0"); } catch (e) {}
+          apply();
+        });
+      });
+    }
+
+    loadState().then((loaded) => {
+      state = loaded;
+      exportStart.value = selectedDate;
+      exportEnd.value = selectedDate;
+      render();
+      renderCareerProfile();
+      renderCoverage();
+      setupCollapsibles();
+      const saveBtn = document.getElementById("cpSaveBtn");
+      if (saveBtn) saveBtn.addEventListener("click", saveCareerProfile);
+      bindUpload("cpCurrentFile", cp.current);
+      bindUpload("cpTargetFile", cp.target);
+      bindUpload("cpRubricFile", cp.rubric);
+    }).catch((error) => {
+      dayLog.innerHTML = `<div class="empty">${esc(error.message)}</div>`;
+    });
+  </script>
+</body>
+</html>

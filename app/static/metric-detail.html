@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>KPI Details</title>
+  <script>
+    (() => {
+      const KEY = "df-theme";
+      const valid = ["light", "dark", "sepia", "aurora"];
+      const params = new URLSearchParams(window.location.search);
+      let saved = null;
+      try { saved = localStorage.getItem(KEY); } catch (e) {}
+      const param = params.get("scoutTheme");
+      const theme =
+        (valid.includes(saved) && saved) ||
+        (valid.includes(param) && param) ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <h1 id="pageTitle">KPI details</h1>
+        <p class="subtitle" id="pageSubtitle">Live detail behind a Dream Team dashboard number.</p>
+      </div>
+      <div class="toolbar">
+        <a class="btn primary" href="index.html">Back to Dream Team</a>
+        <a class="btn" href="architecture.html">Architecture map</a>
+        <a class="btn" href="ledger.html">Impact Ledger</a>
+        <a class="btn" href="activity-log.html">Activity Log</a>
+      </div>
+    </header>
+
+    <section class="metric-strip">
+      <article class="card metric"><div class="metric-value" id="detailCount">0</div><div class="metric-label" id="detailLabel">items</div></article>
+      <article class="card metric"><div class="metric-value" id="detailUpdated">—</div><div class="metric-label">last refresh</div></article>
+    </section>
+
+    <section class="card section">
+      <div class="section-head">
+        <div>
+          <h2 id="sectionTitle">Items</h2>
+          <p class="subtitle" id="sectionSubtitle">Filtered from the local Dream Team state.</p>
+        </div>
+      </div>
+      <div class="task-list" id="items"></div>
+    </section>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+    })[char]);
+
+    function parseJson(value, fallback = "") {
+      if (!value) return fallback;
+      try { return JSON.parse(value); } catch { return fallback; }
+    }
+
+    function looksLikeOutlookItemId(value = "") {
+      const text = String(value).trim();
+      return text.length >= 60 && /^(AAMk|AMk|AQMk)/.test(text) && !/\s/.test(text) && /^[A-Za-z0-9+/=_-]+$/.test(text);
+    }
+
+    function outlookDraftHref(itemId = "") {
+      return `https://outlook.office.com/mail/deeplink/compose/${encodeURIComponent(String(itemId).trim())}`;
+    }
+
+    function normalizeLink(value) {
+      const link = typeof value === "string" ? parseJson(value, value) : value;
+      if (!link) return null;
+      if (typeof link === "string") {
+        if (!link.trim()) return null;
+        const href = link.trim();
+        return looksLikeOutlookItemId(href)
+          ? { label: "Open Outlook draft", href: outlookDraftHref(href), draftId: href }
+          : { label: "Open result", href };
+      }
+      const href = link.href || link.url || link.path || "";
+      if (looksLikeOutlookItemId(href)) {
+        return { label: link.label || link.title || "Open Outlook draft", href: outlookDraftHref(href), draftId: href };
+      }
+      const label = link.label || link.title || (String(href).includes("outlook.office.com/mail") ? "Open Outlook draft" : "Open result");
+      return href ? { label, href, draftId: link.draftId || "" } : null;
+    }
+
+    function linkHref(href = "") {
+      if (!href) return "";
+      if (href.startsWith("/") || href.startsWith("http") || href.startsWith("file:")) return href;
+      if (/^[A-Za-z]:\\/.test(href)) return `file:///${encodeURI(href.replace(/\\/g, "/"))}`;
+      return "";
+    }
+
+    function formatTime(value) {
+      return value ? new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "Not captured";
+    }
+
+    function dateKey(value) {
+      return value ? new Date(value).toLocaleDateString("en-CA") : "";
+    }
+
+    function currentDashboardDate(state) {
+      return state?.serverTime ? dateKey(state.serverTime) : new Date().toLocaleDateString("en-CA");
+    }
+
+    function statusClass(status = "") {
+      return `status ${(status || "queued").toLowerCase()}`;
+    }
+
+    function activeWorkJobs(state) {
+      return state.jobs.filter((job) =>
+        ["queued", "in_progress", "blocked"].includes(job.status)
+        && ["calendar-rsvp", "employee-work", "manual-signal-sweep", "email-action", "teams-action", "workflow-action"].includes(job.type)
+      );
+    }
+
+    // Internal orchestration jobs (the broad sweep) are plumbing, not user-facing work.
+    const INTERNAL_JOB_TYPES = ["manual-signal-sweep"];
+    function userWorkJobs(state) {
+      return activeWorkJobs(state).filter((job) => !INTERNAL_JOB_TYPES.includes(job.type));
+    }
+
+    function completedJobs(state) {
+      return state.jobs.filter((job) => ["completed", "done"].includes(job.status));
+    }
+
+    function linkedResults(state) {
+      const seen = new Set();
+      const docs = [];
+      const today = currentDashboardDate(state);
+      for (const job of completedJobs(state)) {
+        if (dateKey(job.completed_at || job.updated_at || job.created_at) !== today) continue;
+        const link = normalizeLink(job.result_link_json);
+        if (!link?.href) continue;
+        const key = link.href.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        docs.push({ job, link });
+      }
+      return docs;
+    }
+
+    function majorMessages(state) {
+      return state.messages.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
+    function kpiItems(state, metric) {
+      const work = userWorkJobs(state);
+      return {
+        approvals: state.approvals,
+        urgent: [
+          ...state.approvals.filter((approval) => ["high", "medium"].includes(approval.risk)).map((approval) => ({ kind: "approval", approval })),
+          ...work.filter((job) => ["urgent", "high"].includes(job.priority)).map((job) => ({ kind: "job", job })),
+        ],
+        tasks: work,
+        results: linkedResults(state),
+        review: state.approvals.filter((approval) => ["email", "teams"].includes(approval.action_type)),
+        calendar: state.approvals.filter((approval) => approval.action_type === "calendar"),
+        messages: majorMessages(state),
+      }[metric] || [];
+    }
+
+    function cleanResultSummary(summary = "") {
+      return String(summary).replace(/[A-Za-z]:\\[^\n\r]+/g, "").replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim();
+    }
+
+    function approvalCard(approval) {
+      return `
+        <article class="item">
+          <div class="item-top">
+            <h3>${esc(approval.title)}</h3>
+            <span class="risk ${esc(approval.risk)}">${esc(approval.risk)}</span>
+          </div>
+          <div class="small-meta">
+            <span>${esc(approval.employee)}</span>
+            <span>${esc(approval.action_type)}</span>
+            <span>${formatTime(approval.created_at)}</span>
+          </div>
+          <div class="preview">${esc(approval.preview)}</div>
+        </article>
+      `;
+    }
+
+    function jobCard(job) {
+      const summary = cleanResultSummary(job.result_summary || job.blocker || job.instructions || "No summary yet.");
+      return `
+        <article class="item">
+          <div class="item-top">
+            <h3>${esc(job.title)}</h3>
+            <span class="${statusClass(job.status)}">${esc(job.status)}</span>
+          </div>
+          <div class="small-meta">
+            <span>${esc(job.employee)}</span>
+            <span>${esc(job.type)}</span>
+            <span>${esc(job.priority)}</span>
+            <span>${formatTime(job.updated_at || job.created_at)}</span>
+          </div>
+          <div class="preview">${esc(summary)}</div>
+        </article>
+      `;
+    }
+
+    function resultCard(item) {
+      const { job, link } = item;
+      const href = linkHref(link.href);
+      const linkHtml = href ? `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(link.label)}</a>` : esc(link.label || "Open result");
+      const summary = cleanResultSummary(job.result_summary) || "Created result ready for review.";
+      return `
+        <article class="item">
+          <div class="item-top">
+            <h3>${linkHtml}</h3>
+            <span class="${statusClass(job.status)}">${esc(job.status)}</span>
+          </div>
+          <div class="small-meta">
+            <span>${esc(job.employee)}</span>
+            <span>${formatTime(job.completed_at || job.updated_at)}</span>
+          </div>
+          <div class="preview">${esc(summary)}</div>
+        </article>
+      `;
+    }
+
+    function messageCard(message) {
+      return `
+        <article class="item">
+          <div class="item-top">
+            <h3>${esc(message.sender === "user" ? "You to Major" : "Major")}</h3>
+            <span class="${statusClass(message.status)}">${esc(message.status)}</span>
+          </div>
+          <div class="small-meta">
+            <span>${esc(message.employee || "Major")}</span>
+            <span>${formatTime(message.created_at)}</span>
+          </div>
+          <div class="preview">${esc(message.message)}</div>
+        </article>
+      `;
+    }
+
+    const metricConfigs = {
+      approvals: {
+        title: "Pending approvals",
+        label: "pending approvals",
+        subtitle: "Everything currently waiting for your approve, reject, or defer decision.",
+        items: state => state.approvals,
+        render: approvalCard,
+      },
+      urgent: {
+        title: "Urgent and high-priority items",
+        label: "urgent/high items",
+        subtitle: "Pending approvals with meaningful risk plus active high-priority work.",
+        items: state => kpiItems(state, "urgent"),
+        render: item => item.kind === "approval" ? approvalCard(item.approval) : jobCard(item.job),
+      },
+      tasks: {
+        title: "Open tasks",
+        label: "open tasks",
+        subtitle: "Actionable jobs currently queued, in progress, or blocked.",
+        items: state => kpiItems(state, "tasks"),
+        render: jobCard,
+      },
+      results: {
+        title: "Linked documents and drafts",
+        label: "linked results",
+        subtitle: "Completed outputs with a clickable document, draft, or artifact link.",
+        items: state => kpiItems(state, "results"),
+        render: resultCard,
+      },
+      review: {
+        title: "Review signals",
+        label: "review signals",
+        subtitle: "Email and Teams items routed to the Approval inbox.",
+        items: state => kpiItems(state, "review"),
+        render: approvalCard,
+      },
+      calendar: {
+        title: "Calendar invites in inbox",
+        label: "calendar invites",
+        subtitle: "Inbox-resident calendar decisions enriched with schedule context.",
+        items: state => kpiItems(state, "calendar"),
+        render: approvalCard,
+      },
+      messages: {
+        title: "Major thread messages",
+        label: "messages",
+        subtitle: "Recent user-to-Major and Major-to-user dashboard thread messages.",
+        items: state => kpiItems(state, "messages"),
+        render: messageCard,
+      },
+    };
+
+    async function loadState() {
+      const response = await fetch("/api/state", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Unable to load KPI detail (${response.status})`);
+      return response.json();
+    }
+
+    function render(state) {
+      const requested = new URLSearchParams(window.location.search).get("metric") || "approvals";
+      const config = metricConfigs[requested] || metricConfigs.approvals;
+      const items = config.items(state);
+      document.title = `${config.title} - Dream Team`;
+      $("pageTitle").textContent = config.title;
+      $("pageSubtitle").textContent = config.subtitle;
+      $("sectionTitle").textContent = config.title;
+      $("sectionSubtitle").textContent = "Live detail from the local Dream Team app state.";
+      $("detailCount").textContent = items.length;
+      $("detailLabel").textContent = config.label;
+      $("detailUpdated").textContent = state.serverTime ? new Date(state.serverTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "—";
+      $("items").innerHTML = items.length ? items.map(config.render).join("") : `<div class="empty">No items behind this KPI right now.</div>`;
+    }
+
+    loadState().then(render).catch((error) => {
+      $("pageTitle").textContent = "KPI detail unavailable";
+      $("items").innerHTML = `<div class="empty">${esc(error.message)}</div>`;
+    });
+  </script>
+</body>
+</html>

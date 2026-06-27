@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Daily Flow Activity Log</title>
+  <script>
+    (() => {
+      const KEY = "df-theme";
+      const valid = ["light", "dark", "sepia", "aurora"];
+      const params = new URLSearchParams(window.location.search);
+      let saved = null;
+      try { saved = localStorage.getItem(KEY); } catch (e) {}
+      const param = params.get("scoutTheme");
+      const theme =
+        (valid.includes(saved) && saved) ||
+        (valid.includes(param) && param) ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <h1>Daily Flow Activity Log</h1>
+        <p class="subtitle">Operational history by day. Use this for the detailed activity trail; the Impact Ledger remains outcome-only.</p>
+      </div>
+      <div class="toolbar">
+        <a class="btn" href="index.html">Back to cockpit</a>
+        <a class="btn" href="ledger.html">Impact Ledger</a>
+        <button class="btn primary" id="todayBtn">Today</button>
+      </div>
+    </header>
+
+    <main class="grid-page">
+      <section class="card section">
+        <div class="section-head">
+          <button class="btn" id="prevBtn">Previous</button>
+          <div class="month-title" id="monthTitle">Loading</div>
+          <button class="btn" id="nextBtn">Next</button>
+        </div>
+        <div class="calendar" id="calendar"></div>
+      </section>
+
+      <section class="card section">
+        <div class="section-head">
+          <div>
+            <h2 id="logTitle">Select a day</h2>
+            <p class="subtitle" id="logSubtitle">Click a date on the calendar to review Daily Flow activity.</p>
+          </div>
+        </div>
+        <div class="summary-strip">
+          <article class="metric"><div class="metric-value" id="eventCount">0</div><div class="metric-label">activities</div></article>
+          <article class="metric"><div class="metric-value" id="employeeCount">0</div><div class="metric-label">employees</div></article>
+          <article class="metric"><div class="metric-value" id="privateCount">0</div><div class="metric-label">private entries</div></article>
+          <article class="metric"><div class="metric-value" id="statusCount">0</div><div class="metric-label">completed/logged</div></article>
+        </div>
+        <div class="log-list" id="log"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+    })[char]);
+    const calendar = document.getElementById("calendar");
+    const monthTitle = document.getElementById("monthTitle");
+    const log = document.getElementById("log");
+    const logTitle = document.getElementById("logTitle");
+    const logSubtitle = document.getElementById("logSubtitle");
+    const counts = {
+      events: document.getElementById("eventCount"),
+      employees: document.getElementById("employeeCount"),
+      private: document.getElementById("privateCount"),
+      status: document.getElementById("statusCount")
+    };
+    const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    let state = null;
+    let selectedDate = new Date().toLocaleDateString("en-CA");
+    let visibleMonth = new Date();
+
+    async function loadState() {
+      const response = await fetch("/api/activity-log", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Unable to load state (${response.status})`);
+      return response.json();
+    }
+
+    function dateKey(value) {
+      return value ? new Date(value).toLocaleDateString("en-CA") : selectedDate;
+    }
+
+    function activitiesByDate() {
+      const map = new Map();
+      for (const event of state.events || []) {
+        const key = dateKey(event.created_at);
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(event);
+      }
+      return map;
+    }
+
+    function activityHtml(event) {
+      return `
+        <article class="item">
+          <div class="item-top">
+            <h3>${esc(event.employee || "Daily Flow Team")}</h3>
+            ${event.status ? `<span class="status ${esc(event.status)}">${esc(event.status)}</span>` : ""}
+          </div>
+          <p class="slot-detail">${esc(event.summary || "Activity logged.")}</p>
+          ${event.detail ? `<div class="preview">${esc(event.detail)}</div>` : ""}
+          <div class="small-meta">
+            ${event.created_at ? `<span>${new Date(event.created_at).toLocaleString()}</span>` : ""}
+            ${event.sensitivity ? `<span>${esc(event.sensitivity)}</span>` : ""}
+          </div>
+        </article>
+      `;
+    }
+
+    function renderCalendar() {
+      const year = visibleMonth.getFullYear();
+      const month = visibleMonth.getMonth();
+      const byDate = activitiesByDate();
+      monthTitle.textContent = visibleMonth.toLocaleDateString([], { month: "long", year: "numeric" });
+      const first = new Date(year, month, 1);
+      const last = new Date(year, month + 1, 0);
+      const cells = weekdays.map(day => `<div class="weekday">${day}</div>`);
+      for (let index = 0; index < first.getDay(); index++) cells.push(`<div class="day empty"></div>`);
+      for (let day = 1; day <= last.getDate(); day++) {
+        const key = new Date(year, month, day).toLocaleDateString("en-CA");
+        const count = (byDate.get(key) || []).length;
+        cells.push(`
+          <button class="day ${key === selectedDate ? "selected" : ""}" data-date="${key}">
+            <span class="day-number">${day}</span>
+            <span class="day-count">${count ? `${count} activit${count === 1 ? "y" : "ies"}` : "No activity"}</span>
+          </button>
+        `);
+      }
+      calendar.innerHTML = cells.join("");
+      calendar.querySelectorAll("[data-date]").forEach(button => {
+        button.addEventListener("click", () => {
+          selectedDate = button.dataset.date;
+          render();
+        });
+      });
+    }
+
+    function renderDetail() {
+      const byDate = activitiesByDate();
+      const events = (byDate.get(selectedDate) || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const employees = new Set(events.map(event => event.employee || "Daily Flow Team"));
+      logTitle.textContent = new Date(`${selectedDate}T12:00:00`).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+      logSubtitle.textContent = events.length
+        ? `${events.length} Daily Flow activit${events.length === 1 ? "y" : "ies"} captured for this day.`
+        : "No operational activity captured for this day.";
+      counts.events.textContent = events.length;
+      counts.employees.textContent = events.length ? employees.size : 0;
+      counts.private.textContent = events.filter(event => (event.sensitivity || "").toLowerCase() === "private").length;
+      counts.status.textContent = events.filter(event => ["complete", "completed", "logged"].includes(String(event.status || "").toLowerCase())).length;
+      log.innerHTML = events.length ? events.map(activityHtml).join("") : `<div class="empty">No Daily Flow activity has been logged for this day.</div>`;
+    }
+
+    function render() {
+      renderCalendar();
+      renderDetail();
+    }
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1);
+      renderCalendar();
+    });
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1);
+      renderCalendar();
+    });
+    document.getElementById("todayBtn").addEventListener("click", () => {
+      selectedDate = new Date().toLocaleDateString("en-CA");
+      visibleMonth = new Date();
+      render();
+    });
+
+    loadState().then((loaded) => {
+      state = loaded;
+      render();
+    }).catch((error) => {
+      log.innerHTML = `<div class="empty">${esc(error.message)}</div>`;
+    });
+  </script>
+</body>
+</html>

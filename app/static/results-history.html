@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Previous Results - The Dream Team</title>
+  <script>
+    (() => {
+      const KEY = "df-theme";
+      const valid = ["light", "dark", "sepia", "aurora"];
+      const params = new URLSearchParams(window.location.search);
+      let saved = null;
+      try { saved = localStorage.getItem(KEY); } catch (e) {}
+      const param = params.get("scoutTheme");
+      const theme =
+        (valid.includes(saved) && saved) ||
+        (valid.includes(param) && param) ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <h1>Previous Results</h1>
+        <p class="subtitle">Browse created documents, email drafts, Teams drafts, decks, and artifacts by day. The main dashboard stays focused on today's content.</p>
+      </div>
+      <div class="toolbar">
+        <a class="btn primary" href="index.html">Back to Dream Team</a>
+        <a class="btn" href="ledger.html">Impact Ledger</a>
+        <a class="btn" href="activity-log.html">Activity Log</a>
+        <button class="btn" id="todayBtn">Today</button>
+      </div>
+    </header>
+
+    <main class="grid-page">
+      <section class="card section">
+        <div class="section-head">
+          <button class="btn" id="prevBtn">Previous</button>
+          <div class="month-title" id="monthTitle">Loading</div>
+          <button class="btn" id="nextBtn">Next</button>
+        </div>
+        <div class="calendar" id="calendar"></div>
+      </section>
+
+      <section class="card section">
+        <div class="section-head">
+          <div>
+            <h2 id="resultsTitle">Select a day</h2>
+            <p class="subtitle" id="resultsSubtitle">Click a date on the calendar to review created content.</p>
+          </div>
+        </div>
+        <div class="summary-strip">
+          <article class="metric"><div class="metric-value" id="resultCount">0</div><div class="metric-label">linked results</div></article>
+          <article class="metric"><div class="metric-value" id="creatorCount">0</div><div class="metric-label">employees</div></article>
+          <article class="metric"><div class="metric-value" id="draftCount">0</div><div class="metric-label">drafts</div></article>
+          <article class="metric"><div class="metric-value" id="artifactCount">0</div><div class="metric-label">files/artifacts</div></article>
+        </div>
+        <div class="log-list" id="results"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+    })[char]);
+    const calendar = document.getElementById("calendar");
+    const monthTitle = document.getElementById("monthTitle");
+    const results = document.getElementById("results");
+    const resultsTitle = document.getElementById("resultsTitle");
+    const resultsSubtitle = document.getElementById("resultsSubtitle");
+    const counts = {
+      results: document.getElementById("resultCount"),
+      creators: document.getElementById("creatorCount"),
+      drafts: document.getElementById("draftCount"),
+      artifacts: document.getElementById("artifactCount")
+    };
+    const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    let state = null;
+    let selectedDate = new Date().toLocaleDateString("en-CA");
+    let visibleMonth = new Date();
+
+    async function loadState() {
+      const response = await fetch("/api/state", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Unable to load state (${response.status})`);
+      return response.json();
+    }
+
+    function dateKey(value) {
+      return value ? new Date(value).toLocaleDateString("en-CA") : selectedDate;
+    }
+
+    function parseJson(value, fallback = "") {
+      if (!value) return fallback;
+      try { return JSON.parse(value); } catch { return fallback; }
+    }
+
+    function looksLikeOutlookItemId(value = "") {
+      const text = String(value).trim();
+      return text.length >= 60 && /^(AAMk|AMk|AQMk)/.test(text) && !/\s/.test(text) && /^[A-Za-z0-9+/=_-]+$/.test(text);
+    }
+
+    function outlookDraftHref(itemId = "") {
+      return `https://outlook.office.com/mail/deeplink/compose/${encodeURIComponent(String(itemId).trim())}`;
+    }
+
+    function normalizeLink(value) {
+      const link = typeof value === "string" ? parseJson(value, value) : value;
+      if (!link) return null;
+      if (typeof link === "string") {
+        if (!link.trim()) return null;
+        const href = link.trim();
+        return looksLikeOutlookItemId(href)
+          ? { label: "Open Outlook draft", href: outlookDraftHref(href), draftId: href }
+          : { label: "Open result", href };
+      }
+      const href = link.href || link.url || link.path || "";
+      if (looksLikeOutlookItemId(href)) {
+        return { label: link.label || link.title || "Open Outlook draft", href: outlookDraftHref(href), draftId: href };
+      }
+      const label = link.label || link.title || (String(href).includes("outlook.office.com/mail") ? "Open Outlook draft" : "Open result");
+      const oneDrivePath = link.oneDrivePath || "";
+      return href ? { label, href, oneDrivePath, draftId: link.draftId || "" } : { label, href: "", oneDrivePath };
+    }
+
+    function linkHref(href = "") {
+      if (!href) return "";
+      if (href.startsWith("/") || href.startsWith("http") || href.startsWith("file:")) return href;
+      if (/^[A-Za-z]:\\/.test(href)) return `file:///${encodeURI(href.replace(/\\/g, "/"))}`;
+      return "";
+    }
+
+    function completedJobs() {
+      return (state.jobs || []).filter((job) => ["completed", "done"].includes(job.status));
+    }
+
+    function linkedResults() {
+      const seen = new Set();
+      const items = [];
+      for (const job of completedJobs()) {
+        const link = normalizeLink(job.result_link_json);
+        if (!link?.href) continue;
+        const key = link.href.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        items.push({ job, link, date: dateKey(job.completed_at || job.updated_at || job.created_at) });
+      }
+      return items;
+    }
+
+    function resultsByDate() {
+      const map = new Map();
+      for (const item of linkedResults()) {
+        if (!map.has(item.date)) map.set(item.date, []);
+        map.get(item.date).push(item);
+      }
+      return map;
+    }
+
+    function cleanResultSummary(summary = "") {
+      return String(summary).replace(/[A-Za-z]:\\[^\n\r]+/g, "").replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim();
+    }
+
+    function fileNameFromLink(link = {}) {
+      const source = link.oneDrivePath || decodeURIComponent(String(link.href || "").split("?")[0]);
+      const parts = String(source).replace(/\\/g, "/").split("/");
+      return parts[parts.length - 1] || "";
+    }
+
+    function documentKind(fileName = "", label = "") {
+      const text = `${fileName} ${label}`.toLowerCase();
+      if (text.includes("outlook") || text.includes("email")) return "Email draft";
+      if (text.endsWith(".pptx") || text.includes("powerpoint") || text.includes("deck")) return "PowerPoint deck";
+      if (text.endsWith(".docx") || text.includes("word")) return "Word document";
+      if (text.endsWith(".xlsx") || text.includes("spreadsheet") || text.includes("excel")) return "Spreadsheet";
+      if (text.includes("teams")) return "Teams draft";
+      return "Prepared item";
+    }
+
+    function humanizeFileName(fileName = "") {
+      return fileName
+        .replace(/\.[^.]+$/, "")
+        .replace(/[-_]+/g, " ")
+        .replace(/\b\d{4}\b|\b\d{2}\b/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function resultPreview(job, link) {
+      const cleaned = cleanResultSummary(job.result_summary);
+      if (cleaned) return cleaned;
+      const fileName = fileNameFromLink(link);
+      const topic = humanizeFileName(fileName) || job.title || link.label || "review";
+      return `${documentKind(fileName, link.label)} prepared for review: ${topic}.`;
+    }
+
+    function renderCalendar() {
+      const year = visibleMonth.getFullYear();
+      const month = visibleMonth.getMonth();
+      const byDate = resultsByDate();
+      monthTitle.textContent = visibleMonth.toLocaleDateString([], { month: "long", year: "numeric" });
+      const first = new Date(year, month, 1);
+      const last = new Date(year, month + 1, 0);
+      const cells = weekdays.map(day => `<div class="weekday">${day}</div>`);
+      for (let index = 0; index < first.getDay(); index++) cells.push(`<div class="day empty"></div>`);
+      for (let day = 1; day <= last.getDate(); day++) {
+        const key = new Date(year, month, day).toLocaleDateString("en-CA");
+        const count = (byDate.get(key) || []).length;
+        cells.push(`
+          <button class="day ${key === selectedDate ? "selected" : ""}" data-date="${key}">
+            <span class="day-number">${day}</span>
+            <span class="day-count">${count ? `${count} result${count === 1 ? "" : "s"}` : "No results"}</span>
+          </button>
+        `);
+      }
+      calendar.innerHTML = cells.join("");
+      calendar.querySelectorAll("[data-date]").forEach(button => {
+        button.addEventListener("click", () => {
+          selectedDate = button.dataset.date;
+          render();
+        });
+      });
+    }
+
+    function resultHtml(item) {
+      const { job, link } = item;
+      const href = linkHref(link.href);
+      const linkHtml = href ? `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(link.label)}</a>` : esc(link.label || "Open result");
+      const preview = resultPreview(job, link);
+      const fileName = fileNameFromLink(link);
+      return `
+        <article class="item">
+          <div class="item-top">
+            <h3>${linkHtml}</h3>
+            <span class="status ${esc(job.status)}">${esc(job.status)}</span>
+          </div>
+          <div class="small-meta">
+            <span>Created by ${esc(job.employee || "Daily Flow Team")}</span>
+            <span>${new Date(job.completed_at || job.updated_at || job.created_at).toLocaleString()}</span>
+            ${fileName ? `<span>${esc(documentKind(fileName, link.label))}</span>` : ""}
+          </div>
+          <div class="preview">${esc(preview)}</div>
+        </article>
+      `;
+    }
+
+    function renderDetail() {
+      const byDate = resultsByDate();
+      const items = (byDate.get(selectedDate) || []).slice().sort((a, b) =>
+        new Date(b.job.completed_at || b.job.updated_at || b.job.created_at) - new Date(a.job.completed_at || a.job.updated_at || a.job.created_at)
+      );
+      const creators = new Set(items.map(item => item.job.employee || "Daily Flow Team"));
+      resultsTitle.textContent = new Date(`${selectedDate}T12:00:00`).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+      resultsSubtitle.textContent = items.length
+        ? `${items.length} linked result${items.length === 1 ? "" : "s"} created for this day.`
+        : "No linked results were created for this day.";
+      counts.results.textContent = items.length;
+      counts.creators.textContent = items.length ? creators.size : 0;
+      counts.drafts.textContent = items.filter(item => {
+        const text = `${item.link.label} ${item.link.href}`.toLowerCase();
+        return text.includes("outlook") || text.includes("email") || text.includes("teams");
+      }).length;
+      counts.artifacts.textContent = items.filter(item => {
+        const fileName = fileNameFromLink(item.link).toLowerCase();
+        return /\.(docx|pptx|xlsx|html|pdf)$/.test(fileName);
+      }).length;
+      results.innerHTML = items.length ? items.map(resultHtml).join("") : `<div class="empty">No created content with links for this day.</div>`;
+    }
+
+    function render() {
+      renderCalendar();
+      renderDetail();
+    }
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1);
+      renderCalendar();
+    });
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1);
+      renderCalendar();
+    });
+    document.getElementById("todayBtn").addEventListener("click", () => {
+      selectedDate = new Date().toLocaleDateString("en-CA");
+      visibleMonth = new Date();
+      render();
+    });
+
+    loadState().then((loaded) => {
+      state = loaded;
+      selectedDate = state.serverTime ? dateKey(state.serverTime) : selectedDate;
+      visibleMonth = new Date(`${selectedDate}T12:00:00`);
+      render();
+    }).catch((error) => {
+      results.innerHTML = `<div class="empty">${esc(error.message)}</div>`;
+    });
+  </script>
+</body>
+</html>
