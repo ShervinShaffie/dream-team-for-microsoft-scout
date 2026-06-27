@@ -95,7 +95,8 @@ if ($Publish) {
         } else {
           Write-Host '[ok] No source changes to commit.' -ForegroundColor DarkGray
         }
-        & git push origin $Branch 2>&1 | Out-Host
+        $pushOut = (& git push origin $Branch 2>&1 | ForEach-Object { [string]$_ })
+        $pushOut | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
         if ($LASTEXITCODE -ne 0) { Write-Host '[warn] git push failed - continuing to release step; push manually if needed.' -ForegroundColor Yellow }
       } else {
         Write-Host '[warn] Not a git repo - skipping source push, will still create the release.' -ForegroundColor Yellow
