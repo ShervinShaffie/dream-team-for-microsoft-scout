@@ -2,11 +2,11 @@
 
 Your own team of eight AI digital employees, running locally on Microsoft Scout.
 
-Version 4.0.2. See [CHANGELOG.md](CHANGELOG.md) for the full history.
+Version 4.0.3. See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
 The Dream Team is a local command center plus a team of digital employees that run on [Microsoft Scout](https://learn.microsoft.com/en-us/microsoft-scout/). They watch your work signals, prep your meetings, draft your replies, keep a record of what you got done, and hold anything sensitive for your approval. It all runs on your own machine. Start with the built-in eight, add your own, or remove any of them except Major.
 
-Windows only. The installer and the local app run on Windows 10 and 11. The setup scripts (START HERE.cmd, Check Setup.cmd, and the .ps1 files) are written for Windows and will not run on macOS or Linux. There is more on this in the Platform support section below.
+Windows only. The app and the install run on Windows 10 and 11. They will not run on macOS or Linux. There is more in the Platform support section below.
 
 Private by design. Everything runs on 127.0.0.1 and stores to a local database on your own machine.
 
@@ -24,25 +24,24 @@ You can add your own employees or remove any of them except Major, so the roster
 
 - Windows 10 or 11. See the Platform support section below.
 - [Microsoft Scout](https://learn.microsoft.com/en-us/microsoft-scout/), the desktop assistant this team runs inside.
-- Python 3.9 or newer. This is the only thing the app itself needs, and it is plain Python with no extra packages. If `python --version` fails or shows something older than 3.9, the installer can set it up for you with winget, or you can get it from <https://www.python.org/downloads/> and tick "Add Python to PATH". If you get stuck, double-click Check Setup.cmd for a quick diagnosis.
+- Python 3.9 or newer. This is the only thing the app itself needs, and it is plain Python with no extra packages. If you do not have it, Scout can install it for you during setup, or you can get it from <https://www.python.org/downloads/> and tick "Add Python to PATH".
+- Scout allowed to run shell and file commands. The install lets Scout set everything up for you, so it needs permission to run commands and to read and write files. Scout asks for this, and you approve it when prompted.
 - A Microsoft 365 sign-in inside Scout. This is recommended so the team can see your own email, calendar, and Teams. A personal or a work account both work for the core experience.
 
-## Get the package
+## Install it
 
-1. Open the [Releases](../../releases) page of this repo and download the latest `dream-team-for-microsoft-scout-v*.zip`.
-2. Extract the zip first. Right-click the downloaded file, choose Extract All, and pick a folder. Your Downloads folder is fine. Do not run anything from inside the zip preview window, because that only unpacks one file and setup will not find the rest.
+The easy way is to let Scout do it. Open Microsoft Scout and paste this:
 
-## Set up in three steps
+> Install The Dream Team from https://github.com/ShervinShaffie/dream-team-for-microsoft-scout. Read INSTALL-WITH-SCOUT.md in that repo and follow it exactly, including the stop conditions.
 
-1. Extract the zip, as above.
+Scout downloads the latest release, sets it up, checks that it actually worked, and fixes the common problems on its own, like missing Python or a busy port. If it hits something it cannot solve, it stops and tells you plainly instead of looping.
 
-2. Open the extracted folder and double-click START HERE.cmd. It installs the team, starts your dashboard and opens it in your browser, opens Microsoft Scout if it was closed, and copies the finishing command to your clipboard. If Windows shows a one-time "Do you want to run this?" prompt, choose Run, or More info and then Run anyway.
+When Scout finishes, the team is copied into Scout and your dashboard is running. Two things are left for you:
 
-3. Finish in Microsoft Scout. When setup completes, a popup tells you what to do. If Scout was closed, the installer opens it for you with the new skills already loaded, so you just click the chat box and press Ctrl+V then Enter. If Scout was already open, close it and reopen it first, because Scout only loads skills when it starts, then click the chat box and press Ctrl+V then Enter.
+1. Fully close Microsoft Scout and open it again, so it loads the new skills.
+2. In a new chat, type `/daily-flow-setup` and press Enter.
 
-The command is `/daily-flow-setup`, and it is shown on screen so you can type it if you prefer. The wizard asks a few short questions, including which AI model to use, and then turns on your team.
-
-Do you need to restart Scout? Only if it was already running when you installed. Scout reads its skills when it launches and does not pick up new ones while it is running, so a freshly added skill shows up after a restart. If Scout was closed, the installer starts it fresh and no restart is needed.
+That last step is a short wizard. It checks whether you are signed in with Microsoft, lets you pick which AI model to use, and turns on the background automations. Then your team is live.
 
 ## The wizard adapts to you
 
@@ -78,19 +77,23 @@ Every employee works on the two skills in this package plus Scout's built-ins. Y
 - Stop the app: `app\stop-app.ps1`.
 - Reconfigure, pick a different model, or recreate the automations: run `/daily-flow-setup` again in Scout. It is safe to run more than once.
 
-## Prefer to do it by hand?
+## If Scout can't install it
 
-Skip START HERE.cmd and run this from a PowerShell window in the extracted folder:
+Almost everyone can stop at the Install it section above. This is the manual path for the rare case where Scout cannot run the install for you, for example on a machine where it is not allowed to run commands.
+
+1. Open the [Releases](../../releases) page and download the latest `dream-team-for-microsoft-scout-v*.zip`.
+2. Right-click the downloaded file, choose Extract All, and pick a folder. Extract it first. Do not run anything from inside the zip preview window.
+3. Open a PowerShell window in the extracted folder and run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -Auto
 ```
 
-Then type `/daily-flow-setup` in Scout.
+4. Fully close and reopen Microsoft Scout, then type `/daily-flow-setup` in a new chat.
 
 ## Platform support
 
-This package runs on Windows 10 and 11 only. It does not run on macOS or Linux. The app itself is plain Python and the skills are plain Markdown, so the idea is portable, but the installer, the launchers, and the setup checks are written for Windows as .cmd and PowerShell files, and there is no macOS or Linux version in this package today.
+This package runs on Windows 10 and 11 only. It does not run on macOS or Linux. The app itself is plain Python and the skills are plain Markdown, so the idea is portable, but the installer and the setup checks are written for Windows as PowerShell files, and there is no macOS or Linux version in this package today.
 
 ## Privacy
 

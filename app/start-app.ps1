@@ -36,7 +36,7 @@ if (-not (Test-App)) {
       $python = if (Test-Path $pw) { $pw } else { $info.Path }
     } else {
       Write-Warning "Daily Flow can't start: $($info.Reason)"
-      Write-Host '   Fix it, then run this again. Double-click "Check Setup.cmd" for a full setup check.' -ForegroundColor Yellow
+      Write-Host '   Fix it, then run this again. Run preflight.ps1 for a full setup check.' -ForegroundColor Yellow
       return
     }
   } else {
@@ -57,4 +57,4 @@ if (Test-App) {
   Write-Host "Daily Flow app is running at $Url"
   if (-not $env:DAILY_FLOW_NO_BROWSER) { Start-Process $Url }
 }
-else { Write-Warning "Daily Flow app did not respond on port $Port. Double-click ""Check Setup.cmd"" to diagnose (it checks Python 3.9+, the Store stub, and the port)." }
+else { Write-Warning "Daily Flow app did not respond on port $Port. Run preflight.ps1 to diagnose (it checks Python 3.9+, the Store stub, and the port)." }

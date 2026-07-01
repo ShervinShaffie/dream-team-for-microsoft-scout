@@ -3,7 +3,7 @@
 #
 # Run it directly to check your machine is ready:
 #     powershell -ExecutionPolicy Bypass -File .\preflight.ps1
-# Or double-click "Check Setup.cmd".
+# Scout also runs this when it checks your setup.
 #
 # install.ps1 dot-sources this file to reuse the Python detection + winget self-heal,
 # so the same checks run everywhere. The app is pure Python standard library (no pip),
@@ -152,7 +152,7 @@ function Invoke-Preflight {
     $ok = $false
     Write-Host '[FAIL] Python 3 was not found.' -ForegroundColor Red
     Write-Host '       Fix: install it from https://www.python.org/downloads/ (tick "Add Python to PATH"),' -ForegroundColor Yellow
-    Write-Host '       or run the installer (START HERE.cmd) which can install it for you with winget.' -ForegroundColor Yellow
+    Write-Host '       or run the installer (install.ps1 -Auto), which can install it for you with winget.' -ForegroundColor Yellow
   }
 
   # Microsoft Scout presence — the team's brain runs inside Scout, so flag clearly if it is missing.
@@ -165,7 +165,7 @@ function Invoke-Preflight {
     Write-Host '[FAIL] Microsoft Scout was not found on this machine.' -ForegroundColor Red
     Write-Host '       The Daily Flow dashboard will run, but your team stays INACTIVE without Scout:' -ForegroundColor Yellow
     Write-Host '       Major, the background automations, and all the AI live inside Microsoft Scout.' -ForegroundColor Yellow
-    Write-Host '       Fix: install Microsoft Scout first, then run START HERE.cmd again.' -ForegroundColor Yellow
+    Write-Host '       Fix: install Microsoft Scout first, then run the install again.' -ForegroundColor Yellow
   }
 
   # Port (informational - the installer auto-picks a free one if 8787 is taken)
@@ -190,7 +190,7 @@ function Invoke-Preflight {
 
   Write-Host ''
   if ($ok) { Write-Host 'RESULT: Ready to run the Daily Flow Team.' -ForegroundColor Green }
-  else { Write-Host 'RESULT: Fix the [FAIL] item(s) above, then run this again (or run START HERE.cmd).' -ForegroundColor Red }
+  else { Write-Host 'RESULT: Fix the [FAIL] item(s) above, then run this again (or re-run the install).' -ForegroundColor Red }
   Write-Host ''
   return $ok
 }

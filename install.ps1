@@ -1,8 +1,7 @@
 # Daily Flow Team (Dream Team) - Installer / Bootstrap
 # Author: Shervin Shaffie
 #
-# Normally you do NOT run this by hand - just double-click "START HERE.cmd".
-# Manual use:
+# Normally Scout runs this for you (see INSTALL-WITH-SCOUT.md). To run it yourself:
 #     powershell -ExecutionPolicy Bypass -File .\install.ps1          (mechanical install only)
 #     powershell -ExecutionPolicy Bypass -File .\install.ps1 -Auto    (full hands-off setup)
 #
@@ -77,7 +76,7 @@ if (-not $py.Ok) {
   if (-not $py.Ok) {
     Write-Host '[STOP] Python 3.9+ is required to run the app.' -ForegroundColor Red
     Write-Host '       Install it from https://www.python.org/downloads/ (tick "Add Python to PATH"),' -ForegroundColor Yellow
-    Write-Host '       then run START HERE.cmd again. (Tip: double-click "Check Setup.cmd" to re-check.)' -ForegroundColor Yellow
+    Write-Host '       then run the install again. (Tip: run preflight.ps1 to re-check your setup.)' -ForegroundColor Yellow
     if ($Auto) { Write-Host ''; Read-Host 'Press Enter to close' }
     return
   }
@@ -98,7 +97,7 @@ if ($ScoutMissing) {
   Write-Host '   The dashboard will install and run, but your TEAM STAYS' -ForegroundColor Yellow
   Write-Host '   INACTIVE until Scout is installed — Major, the background' -ForegroundColor Yellow
   Write-Host '   automations, and all the AI live inside Microsoft Scout.' -ForegroundColor Yellow
-  Write-Host '   Install Microsoft Scout, then run START HERE.cmd again.' -ForegroundColor Yellow
+  Write-Host '   Install Microsoft Scout, then run the install again.' -ForegroundColor Yellow
   Write-Host '  ============================================================' -ForegroundColor Yellow
   if (-not $Auto) {
     $go = Read-Host 'Continue placing the local app anyway? [Y/n]'
@@ -185,7 +184,7 @@ if (-not $Auto) {
   if ($ScoutMissing) {
     Write-Host '=== Local app placed — but Microsoft Scout is required ===' -ForegroundColor Yellow
     Write-Host '  1) Install Microsoft Scout on this machine.'
-    Write-Host '  2) Run START HERE.cmd again so the team skills load into Scout.'
+    Write-Host '  2) Run the install again so the team skills load into Scout.'
     Write-Host '  3) Then, in a new Scout chat, type:  /daily-flow-setup'
   } else {
     Write-Host '=== Almost done! Two steps left ===' -ForegroundColor Green
@@ -241,7 +240,7 @@ $cmd = '/daily-flow-setup'
 if ($ScoutMissing) {
   # No Scout on this machine: do not pretend to open it or push /daily-flow-setup yet.
   $step1 = 'Install Microsoft Scout on this machine (the dashboard is open, but the team needs Scout).'
-  $step2 = 'After Scout is installed, run START HERE.cmd again so the team skills load into Scout.'
+  $step2 = 'After Scout is installed and open, run the install again so the team skills load into Scout.'
   $step3 = 'Then open Scout, click the chat box, type /daily-flow-setup and press Enter.'
   $copied = $false
 } else {

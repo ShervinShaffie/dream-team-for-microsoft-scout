@@ -27,7 +27,7 @@ Read the install location from `SKILLS_DIR/daily-flow-setup/.install-location`, 
 If `config.json` is missing or the app is not responding, run the full flow starting at Step 0.
 
 ## Step 0 - Find the package
-Read the install location from `SKILLS_DIR/daily-flow-setup/.install-location` (a single absolute path; see "Finding your Scout skills folder" above). Call this `INSTALL_DIR`. Inside it: `app\` (the local app), `automations\automations.json` (automation templates), and `skills\` (already copied into Scout by the installer). If the pointer file is missing, ask the user where they unzipped the package, or tell them to run `START HERE.cmd` (or `install.ps1`) first.
+Read the install location from `SKILLS_DIR/daily-flow-setup/.install-location` (a single absolute path; see "Finding your Scout skills folder" above). Call this `INSTALL_DIR`. Inside it: `app\` (the local app), `automations\automations.json` (automation templates), and `skills\` (already copied into Scout by the installer). If the pointer file is missing, ask the user where they unzipped the package, or tell them to run the install again (ask Scout to install it per INSTALL-WITH-SCOUT.md, or run `install.ps1`) first.
 
 ## Step 1 - Who is setting this up? (automatic detection)
 Detect the audience automatically instead of making the user classify themselves:
@@ -36,7 +36,7 @@ Detect the audience automatically instead of making the user classify themselves
 `AUDIENCE` (microsoft | general) decides Step 5 only - every other step is identical for both. **For `general`, never attempt or mention internal fetches, SharePoint, sign-in-gated skills, or 401s** - the team is complete on the bundled + built-in skills, so keep that path silent and clean.
 
 ## Step 2 - Detect the environment (silent, then summarize in 4-5 lines)
-1. **Python 3** - the only hard runtime prerequisite (the app is pure Python standard library, no pip). Run `python --version` (and `python3`, and `py -3 --version`). Needs **3.9+**. Watch for two common traps: (a) the **Microsoft Store stub** - if `python` resolves under `WindowsApps` and opening it just launches the Store, that is NOT real Python; (b) a version **older than 3.9**. If Python is missing, the stub, or too old, the bundled installer can fix it with `winget install Python.Python.3.12` (user scope, no admin) - tell the user they can re-run `START HERE.cmd`, or double-click **`Check Setup.cmd`** (which runs `preflight.ps1`) to diagnose. Everything else waits on a working Python.
+1. **Python 3** - the only hard runtime prerequisite (the app is pure Python standard library, no pip). Run `python --version` (and `python3`, and `py -3 --version`). Needs **3.9+**. Watch for two common traps: (a) the **Microsoft Store stub** - if `python` resolves under `WindowsApps` and opening it just launches the Store, that is NOT real Python; (b) a version **older than 3.9**. If Python is missing, the stub, or too old, the bundled installer can fix it with `winget install Python.Python.3.12` (user scope, no admin) - tell the user they can re-run the install, or run **`preflight.ps1`** to diagnose. Everything else waits on a working Python.
 2. **Microsoft 365 sign-in** - `m_m365_status`. If not signed in, offer `m_m365_sign_in` (they may defer). For the Microsoft audience this also matters for Skill Shack access.
 3. **Installed skills** - list `SKILLS_DIR` and Scout's bundled skills to see what's already present.
 4. **Free port** - default `8787`. If it already responds and is NOT this app, pick the next free port. If it IS a Daily Flow app, note an instance is running.
@@ -82,14 +82,14 @@ Then create the chosen automations: read `<INSTALL_DIR>\automations\automations.
 ## Step 8 - Verify and hand off
 - GET `/api/state` and confirm healthy. Confirm via `m_list_automations` that the selected automations exist with the right enabled state.
 - Give a short, friendly summary: dashboard URL, model in use, which employees are ready, which automations are live and when they next run, document folder, and - for Microsoft - the per-skill depth outcome (installed / skipped + how to add later).
-- Tell them how to drive it: open the dashboard, talk to **Major**, use the **Attention Major** button for an on-demand sweep. They can also **add their own employees** (the "+ Add Employee" button on the cockpit walks them through onboarding one of their own Scout workflows) or **remove any employee except Major** - the team is theirs to compose. Mention `app\start-app.ps1` (relaunch), `app\stop-app.ps1` (stop), and `Check Setup.cmd` (re-check prerequisites).
+- Tell them how to drive it: open the dashboard, talk to **Major**, use the **Attention Major** button for an on-demand sweep. They can also **add their own employees** (the "+ Add Employee" button on the cockpit walks them through onboarding one of their own Scout workflows) or **remove any employee except Major** - the team is theirs to compose. Mention `app\start-app.ps1` (relaunch), `app\stop-app.ps1` (stop), and `preflight.ps1` (re-check prerequisites).
 - **General audience:** mention that more guidance (and the companion blog post / video) explains optional add-ons; never imply the gated internal skills are available to them.
 
 ## Re-running / fixing
 Safe to run again. On re-run: detect the running app and existing automations and offer to (a) reconfigure, (b) recreate automations, or (c) just restart the app. Never duplicate automations - match by name. Re-running can also retry any depth skills that failed the first time.
 
 ## If something fails
-- App won't start: run **`Check Setup.cmd`** (or `preflight.ps1`) - it pinpoints Python missing / too old / the Microsoft Store stub, and a busy port. The installer can auto-install Python via winget; otherwise install 3.9+ from python.org (tick "Add Python to PATH") and re-run `start-app.ps1`.
+- App won't start: run **`preflight.ps1`** - it pinpoints Python missing / too old / the Microsoft Store stub, and a busy port. The installer can auto-install Python via winget; otherwise install 3.9+ from python.org (tick "Add Python to PATH") and re-run `start-app.ps1`.
 - Automations not firing: confirm M365 sign-in and that the app responds on the configured port.
 - `/daily-flow-setup` not recognized after install: fully restart Microsoft Scout so it loads new skills.
 - Skill Shack fetch returns 401: the user is not signed in to Microsoft - have them sign in (`m_m365_sign_in`) or use the Download-link fallback in 5c.

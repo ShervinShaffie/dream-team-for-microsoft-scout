@@ -30,7 +30,7 @@ $Zip = Join-Path $OutDir ("dream-team-for-microsoft-scout-v{0}.zip" -f $Version)
 $NotesFile = Join-Path $Root ("RELEASE-NOTES-v{0}.md" -f $Version)
 
 # Allowlist of top-level items to ship. Anything not listed is ignored.
-$include = @('START HERE.cmd','Check Setup.cmd','install.ps1','preflight.ps1','verify-clean.ps1','package-share.ps1','README.md','CHANGELOG.md','LICENSE',("RELEASE-NOTES-v{0}.md" -f $Version),'manifest.json','.gitignore','app','skills','automations')
+$include = @('INSTALL-WITH-SCOUT.md','install.ps1','preflight.ps1','verify-clean.ps1','package-share.ps1','README.md','CHANGELOG.md','LICENSE',("RELEASE-NOTES-v{0}.md" -f $Version),'manifest.json','.gitignore','app','skills','automations')
 # Runtime/local data that must never ship, pruned from the staged copy.
 $prunePatterns = @('data','dist','__pycache__','*.pyc','*.db','*.db-wal','*.db-shm','*.db.bak*','*.pid','state.json','impact.json','config.json','profile','.writetest','.install-location')
 

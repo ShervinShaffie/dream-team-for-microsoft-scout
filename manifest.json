@@ -1,15 +1,14 @@
 {
   "name": "dream-team-for-microsoft-scout",
   "displayName": "The Dream Team for Microsoft Scout",
-  "version": "4.0.2",
+  "version": "4.0.3",
   "license": "MIT",
   "author": "Shervin Shaffie",
   "audience": "Public - any Microsoft Scout user (Windows)",
   "platform": "Windows only",
   "description": "A local-first command center and a composable team of eight digital employees for Microsoft Scout. Runs entirely on your own machine on Scout-native tools; sign in with Microsoft to optionally unlock extra internal depth skills. Add or remove your own employees. Includes the app, the orchestrator and setup skills, the background automations, and a guided setup wizard with a setup doctor.",
   "entrypoints": {
-    "startHere": "START HERE.cmd",
-    "checkSetup": "Check Setup.cmd",
+    "scoutInstall": "INSTALL-WITH-SCOUT.md",
     "install": "install.ps1",
     "preflight": "preflight.ps1",
     "wizard": "/daily-flow-setup",
