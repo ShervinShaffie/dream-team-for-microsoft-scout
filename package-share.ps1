@@ -41,7 +41,7 @@ try {
     if ($inSection) { $section.Add($line) }
   }
   $notesBody = ($section -join "`n").Trim()
-  if ($notesBody) { Set-Content -LiteralPath $NotesFile -Value $notesBody -Encoding UTF8 }
+  if ($notesBody) { [System.IO.File]::WriteAllText($NotesFile, $notesBody) }
 } catch {}
 
 # Allowlist of top-level items to ship. Anything not listed is ignored.
