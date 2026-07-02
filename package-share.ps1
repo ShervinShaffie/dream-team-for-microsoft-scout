@@ -27,10 +27,25 @@ try {
   if ($mf.version) { $Version = [string]$mf.version }
 } catch {}
 $Zip = Join-Path $OutDir ("dream-team-for-microsoft-scout-v{0}.zip" -f $Version)
-$NotesFile = Join-Path $Root ("RELEASE-NOTES-v{0}.md" -f $Version)
+# Release notes for the GitHub Release body come from the matching CHANGELOG.md section,
+# so CHANGELOG.md is the single source of truth (no separate per-version notes files).
+$NotesFile = Join-Path ([System.IO.Path]::GetTempPath()) ("dft-relnotes-{0}.md" -f $Version)
+Remove-Item -LiteralPath $NotesFile -Force -ErrorAction SilentlyContinue
+try {
+  $changelog = Get-Content -Raw (Join-Path $Root 'CHANGELOG.md')
+  $section = New-Object System.Collections.Generic.List[string]
+  $inSection = $false
+  foreach ($line in ($changelog -split "`r?`n")) {
+    if ($line -match ('^###\s+' + [regex]::Escape($Version) + '\s*$')) { $inSection = $true; continue }
+    elseif ($inSection -and $line -match '^#{1,3}\s') { break }
+    if ($inSection) { $section.Add($line) }
+  }
+  $notesBody = ($section -join "`n").Trim()
+  if ($notesBody) { Set-Content -LiteralPath $NotesFile -Value $notesBody -Encoding UTF8 }
+} catch {}
 
 # Allowlist of top-level items to ship. Anything not listed is ignored.
-$include = @('INSTALL-WITH-SCOUT.md','install.ps1','preflight.ps1','verify-clean.ps1','package-share.ps1','README.md','CHANGELOG.md','LICENSE',("RELEASE-NOTES-v{0}.md" -f $Version),'manifest.json','.gitignore','app','skills','automations')
+$include = @('INSTALL-WITH-SCOUT.md','install.ps1','preflight.ps1','verify-clean.ps1','package-share.ps1','README.md','CHANGELOG.md','LICENSE','manifest.json','.gitignore','app','skills','automations')
 # Runtime/local data that must never ship, pruned from the staged copy.
 $prunePatterns = @('data','dist','__pycache__','*.pyc','*.db','*.db-wal','*.db-shm','*.db.bak*','*.pid','state.json','impact.json','config.json','profile','.writetest','.install-location')
 
