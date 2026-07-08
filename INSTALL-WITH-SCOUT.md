@@ -4,12 +4,13 @@ You are Microsoft Scout, and you are installing the Dream Team for the user on t
 
 ## What "done" looks like
 
-The install is complete when both of these are true:
+The whole job is complete when all of these are true:
 
 1. The two skill folders `daily-flow-team` and `daily-flow-setup` exist in the user's Scout skills folder. That folder is one of `~/.copilot/m-skills`, `~/.scout/m-skills`, `~/.copilot-cloud/m-skills`, or `~/.copilot-dev/m-skills`.
 2. The dashboard answers. A GET to `http://127.0.0.1:<port>/api/state` returns HTTP 200, where `<port>` is the `port` value in the installed app's `config.json` (default 8787).
+3. Setup has been finished in this same chat (Step 4): the four background automations are installed and switched on, and the dashboard has been populated with the user's real data (or is showing the honest "all caught up" state after a first sweep).
 
-When both are true, stop and hand off to the wizard in Step 4. Do not keep going.
+Steps 1 and 2 are the mechanical install. Step 3 is setup, and you do it yourself in this same session, without a restart. When all three are true, stop.
 
 ## Before you start
 
@@ -33,8 +34,10 @@ Before continuing, verify the package folder contains `install.ps1`, `app\app.py
 From the package folder, run:
 
 ```
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -Auto
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -Auto -AgentInline
 ```
+
+Pass `-AgentInline` because you are going to finish setup yourself in this same chat (Step 4). It tells the installer not to show the user a "restart Scout and paste a command" message, since you are handling setup inline and talking to them here.
 
 This copies the two skills into every Scout skills folder on the machine, places the app, writes a `config.json` with a free port and a document folder, starts the dashboard, and records where it installed.
 
@@ -64,18 +67,15 @@ Manual fallback, only if `install.ps1` will not run at all:
 4. Start the app: `python "<install folder>\app\app.py"`.
 5. Run the verify checks from Step 2.
 
-## Step 4: finish in Scout
+## Step 4: finish setup in this same chat (no restart, no pasted command)
 
-The mechanical install is done, but Scout needs to load the new skills, and it only does that when it starts.
+The mechanical install is done, but the team is not set up yet. Do NOT tell the user to quit Scout, reopen it, start a new chat, or type `/daily-flow-setup`. Scout only registers slash commands when it launches, so `/daily-flow-setup` is not available in this running session yet, but you do not need it. You are already Scout, with every tool the setup needs, and the setup wizard is just a set of instructions sitting in the package you just extracted. So finish setup yourself, right here, now:
 
-Tell the user, in plain words:
+1. Read the setup wizard from the package: `<package folder>\skills\daily-flow-setup\SKILL.md`.
+2. Carry out its steps in this same chat. In order, that means: confirm the user's sign-in and audience, pick the model, install the four background automations and confirm all four are switched ON, then run the first sweep yourself so the dashboard fills with the user's real data, and wait until the board is populated before you finish. The wizard file gives you the exact steps and the API calls to make.
+3. You are finished when the board shows real data (or the honest "all caught up" state after a first sweep) and the four automations are on. Then give the user a short, plain summary: the dashboard link, that their team is live, and where the desktop shortcut is.
 
-1. Fully close Microsoft Scout and open it again.
-2. In a new chat, type `/daily-flow-setup` and press Enter.
-
-That wizard finishes the personal part. It detects whether they are signed in with Microsoft, lets them pick a model, and sets up the background automations, all with their confirmation. Point them to it and let it take over. Do not try to reproduce the wizard's steps yourself.
-
-Then give the user a short, plain summary of what you did: the dashboard link (`http://127.0.0.1:<port>/`), that the two skills are installed, and the two steps above.
+Note: `install.ps1` prints a message telling the user to restart Scout and type `/daily-flow-setup`. That message is only for people who run the installer by hand with no agent driving it. You are continuing setup inline instead, so do NOT relay it or act on it. The only restart worth mentioning is optional and comes at the very end: restarting Scout later will register the `/daily-flow-setup` and `/daily-flow-team` slash commands for future use, but nothing about the install or the running team depends on it.
 
 ## Guardrails (these are not optional)
 

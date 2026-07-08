@@ -2,7 +2,7 @@
 
 Your own team of eight AI digital employees, running locally on Microsoft Scout.
 
-Version 4.2.0. See [CHANGELOG.md](CHANGELOG.md) for the full history.
+Version 4.2.1. See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
 The Dream Team is a local command center plus a team of digital employees that run on [Microsoft Scout](https://learn.microsoft.com/en-us/microsoft-scout/). They watch your work signals, prep your meetings, draft your replies, keep a record of what you got done, and hold anything sensitive for your approval. It all runs on your own machine. Start with the built-in eight, add your own, or remove any of them except Major.
 
@@ -23,25 +23,20 @@ You can add your own employees or remove any of them except Major, so the roster
 ## What you need
 
 - Windows 10 or 11. See the Platform support section below.
-- [Microsoft Scout](https://learn.microsoft.com/en-us/microsoft-scout/), the desktop assistant this team runs inside.
+- [Microsoft Scout](https://learn.microsoft.com/en-us/microsoft-scout/), the desktop assistant this team runs inside. **Microsoft employees:** get Scout from **https://aka.ms/clawpilot** (the internal source for Microsoft). Everyone else: use the public Microsoft Scout link above.
 - Python 3.9 or newer. This is the only thing the app itself needs, and it is plain Python with no extra packages. If you do not have it, Scout can install it for you during setup, or you can get it from <https://www.python.org/downloads/> and tick "Add Python to PATH".
 - Scout allowed to run shell and file commands. The install lets Scout set everything up for you, so it needs permission to run commands and to read and write files. Scout asks for this, and you approve it when prompted.
 - A Microsoft 365 sign-in inside Scout. This is recommended so the team can see your own email, calendar, and Teams. A personal or a work account both work for the core experience.
 
 ## Install it
 
-The easy way is to let Scout do it. Open Microsoft Scout, start a new chat, and if you can, set that chat's model to Claude Opus 4.8, which runs the setup most reliably. Then paste this:
+The easy way is to let Scout do the whole thing in one go. Open Microsoft Scout, start a chat, and if you can, set that chat's model to Claude Opus 4.8, which runs setup most reliably. Then paste this:
 
-> Install The Dream Team from https://github.com/ShervinShaffie/dream-team-for-microsoft-scout. First, if this chat is not already on Claude Opus 4.8, tell me so I can switch to it before you continue, since it runs the setup most reliably. Then read INSTALL-WITH-SCOUT.md in that repo and follow it exactly, including the stop conditions.
+> Install The Dream Team from https://github.com/ShervinShaffie/dream-team-for-microsoft-scout. First, if this chat is not already on Claude Opus 4.8, tell me so I can switch to it before you continue, since it runs setup most reliably. Then read INSTALL-WITH-SCOUT.md in that repo and follow it exactly, including the stop conditions.
 
-Scout downloads the latest release, sets it up, checks that it actually worked, and fixes the common problems on its own, like missing Python or a busy port. If it hits something it cannot solve, it stops and tells you plainly instead of looping.
+From there, Scout does everything in that same chat: it downloads the latest release, sets up the app, installs your team, switches on the background automations, and runs your first sweep so the dashboard fills with your real email, calendar, Teams, and meeting prep. It fixes common problems on its own, like missing Python or a busy port, and if it hits something it cannot solve, it stops and tells you plainly instead of looping.
 
-When Scout finishes, the team is copied into Scout, your dashboard is running, and a **The Dream Team** shortcut is placed on your desktop so you can reopen the dashboard anytime (it starts the app first if it is not already running). Two things are left for you:
-
-1. Fully close Microsoft Scout and open it again, so it loads the new skills.
-2. In a new chat, type `/daily-flow-setup` and press Enter.
-
-That last step is a short wizard. It checks whether you are signed in with Microsoft, lets you pick which AI model to use, and turns on the background automations. Then your team is live.
+You do not need to quit Scout, reopen it, or type any commands. When Scout says it is done, your team is live, your dashboard is open and showing your real day, and a **The Dream Team** shortcut is on your desktop so you can reopen the dashboard anytime. That first sweep takes about 5 to 10 minutes, and the board fills in as it goes, so a fresh dashboard is never left blank.
 
 ## The wizard adapts to you
 
@@ -75,11 +70,11 @@ Every employee works on the two skills in this package plus Scout's built-ins. Y
 
 - Start the app or open the dashboard: `app\start-app.ps1`, in your install folder.
 - Stop the app: `app\stop-app.ps1`.
-- Reconfigure, pick a different model, or recreate the automations: run `/daily-flow-setup` again in Scout. It is safe to run more than once.
+- Reconfigure, pick a different model, or recreate the automations: just ask Scout to run the Dream Team setup again. It is safe to run more than once. (If you have restarted Scout since installing, you can also type `/daily-flow-setup`.)
 
 ## If Scout can't install it
 
-Almost everyone can stop at the Install it section above. This is the manual path for the rare case where Scout cannot run the install for you, for example on a machine where it is not allowed to run commands.
+Almost everyone can stop at the Install it section above. This is the manual path for the rare case where Scout cannot run the install for you, for example on a machine where it is not allowed to run commands. It ends the same way as the easy path: Scout finishes setup in a chat, with no restart needed.
 
 1. Open the [Releases](../../releases) page and download the latest `dream-team-for-microsoft-scout-v*.zip`.
 2. Right-click the downloaded file, choose Extract All, and pick a folder. Extract it first. Do not run anything from inside the zip preview window.
@@ -89,7 +84,11 @@ Almost everyone can stop at the Install it section above. This is the manual pat
 powershell -ExecutionPolicy Bypass -File .\install.ps1 -Auto
 ```
 
-4. Fully close and reopen Microsoft Scout, then type `/daily-flow-setup` in a new chat.
+4. Open Microsoft Scout and paste this so it finishes setup in the chat, the same way the easy path does:
+
+> Finish setting up The Dream Team. Read and follow the daily-flow-setup skill: confirm my sign-in, let me pick my model, switch on the four background automations, and run my first sweep so my dashboard fills with my real data.
+
+Scout finishes right there in the chat, and your dashboard fills within about 5 to 10 minutes. You do not need to restart Scout or type a slash command. (If Scout says it cannot find the skill, fully close and reopen it once so it loads, then paste the same message again.)
 
 ## Platform support
 

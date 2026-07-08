@@ -4,6 +4,8 @@
 # Normally Scout runs this for you (see INSTALL-WITH-SCOUT.md). To run it yourself:
 #     powershell -ExecutionPolicy Bypass -File .\install.ps1          (mechanical install only)
 #     powershell -ExecutionPolicy Bypass -File .\install.ps1 -Auto    (full hands-off setup)
+# When Scout runs this inline and then finishes setup in the same chat, it passes -AgentInline so the
+# closing message does not tell the user to restart Scout or paste a command (Scout handles it in chat).
 #
 # It copies the team skills into Microsoft Scout and places the app. With -Auto it also writes
 # sensible defaults, starts the dashboard, opens Scout, and copies the finishing command for you.
@@ -12,7 +14,8 @@
 param(
   [string]$InstallDir = (Join-Path $env:USERPROFILE 'Daily Flow Team'),
   [int]$BasePort = 8787,
-  [switch]$Auto
+  [switch]$Auto,
+  [switch]$AgentInline
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -183,7 +186,7 @@ if (-not $Auto) {
   Write-Host ''
   if ($ScoutMissing) {
     Write-Host '=== Local app placed — but Microsoft Scout is required ===' -ForegroundColor Yellow
-    Write-Host '  1) Install Microsoft Scout on this machine.'
+    Write-Host '  1) Install Microsoft Scout on this machine. Microsoft employees: get it from https://aka.ms/clawpilot'
     Write-Host '  2) Run the install again so the team skills load into Scout.'
     Write-Host '  3) Then, in a new Scout chat, type:  /daily-flow-setup'
   } else {
@@ -263,11 +266,27 @@ try {
   Write-Host "[info] Could not create a desktop shortcut (skipped, not a problem): $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
-# 9. Copy the finishing command; decide what to tell the user based on whether Scout is already running
+# 9. Tell the user what is next. If Scout is finishing setup inline in the same chat (-AgentInline),
+#    do NOT tell them to restart or paste a command - Scout handles it and talks to them in chat.
 $cmd = '/daily-flow-setup'
+if ($AgentInline -and -not $ScoutMissing) {
+  Write-Host ''
+  Write-Host '===========================================================' -ForegroundColor Green
+  Write-Host '  APP INSTALLED - Scout is finishing setup in your chat' -ForegroundColor Green
+  Write-Host '===========================================================' -ForegroundColor Green
+  Write-Host ''
+  Write-Host '   Your dashboard is open. Scout is now switching on your team and'
+  Write-Host '   running your first sweep (about 5 to 10 minutes). The board fills'
+  Write-Host '   in as it goes. You do not need to restart Scout or type any command.'
+  Write-Host ''
+  Write-Host '   Tip: a "The Dream Team" shortcut is on your desktop to reopen the dashboard.'
+  Write-Host '==========================================================='  -ForegroundColor Green
+  return
+}
+# Otherwise (manual -Auto run, or Scout missing): guide the user through finishing in Scout.
 if ($ScoutMissing) {
   # No Scout on this machine: do not pretend to open it or push /daily-flow-setup yet.
-  $step1 = 'Install Microsoft Scout on this machine (the dashboard is open, but the team needs Scout).'
+  $step1 = 'Install Microsoft Scout on this machine (the dashboard is open, but the team needs Scout). Microsoft employees: get it from https://aka.ms/clawpilot'
   $step2 = 'After Scout is installed and open, run the install again so the team skills load into Scout.'
   $step3 = 'Then open Scout, click the chat box, type /daily-flow-setup and press Enter.'
   $copied = $false
