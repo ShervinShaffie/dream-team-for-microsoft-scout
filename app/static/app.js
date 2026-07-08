@@ -913,7 +913,48 @@ function renderThreadContext() {
   $("sendBtn").textContent = "Reply in thread";
 }
 
+function renderFirstRunBanner() {
+  const el = $("firstRunBanner");
+  if (!el) return;
+  const boardEmpty =
+    state.approvals.length === 0 &&
+    (((state.workLedgerToday && state.workLedgerToday.todayCount) || 0) === 0) &&
+    kpiItems("results").length === 0 &&
+    kpiItems("review").length === 0 &&
+    kpiItems("calendar").length === 0 &&
+    kpiItems("messages").length === 0 &&
+    kpiItems("tasks").length === 0;
+  if (!boardEmpty) {
+    el.hidden = true;
+    el.className = "first-run-banner";
+    return;
+  }
+  const sweeps = state.jobs.filter((job) => job.type === "manual-signal-sweep");
+  const sweepActive = sweeps.some((job) => ["queued", "in_progress"].includes(job.status));
+  const everCompleted = sweeps.some((job) => ["completed", "done"].includes(job.status));
+  let title;
+  let body;
+  let variant;
+  if (sweepActive) {
+    variant = "working";
+    title = "Your team is doing its first sweep";
+    body = "This usually takes 5 to 10 minutes, and the board fills in as it goes. You can leave this page open — it refreshes on its own.";
+  } else if (everCompleted) {
+    variant = "clear";
+    title = "You're all caught up";
+    body = "Your team checked your email, Teams, calendar, and meetings and found nothing that needs you right now. New items show up here automatically, or press Attention Major at the top to sweep again.";
+  } else {
+    variant = "";
+    title = "Your board is ready to fill";
+    body = "Press Attention Major at the top to run the first sweep across your email, Teams, calendar, and meetings. It takes about 5 to 10 minutes and fills the board as it goes.";
+  }
+  el.hidden = false;
+  el.className = `first-run-banner${variant ? " " + variant : ""}`;
+  el.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(body)}</span>`;
+}
+
 function render() {
+  renderFirstRunBanner();
   renderMetrics();
   renderEmployees();
   renderOnboardingCards();

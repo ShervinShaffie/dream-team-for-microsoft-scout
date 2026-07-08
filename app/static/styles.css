@@ -535,6 +535,23 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 .attention-banner.active { display: block; }
 .attention-banner.done { border-color: var(--cp-success); }
 .attention-banner.blocked { border-color: var(--cp-danger); }
+.first-run-banner {
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--cp-accent);
+  border-left: 4px solid var(--cp-accent);
+  border-radius: 0.625rem;
+  background: var(--cp-accent-soft);
+  color: var(--cp-text);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.first-run-banner[hidden] { display: none; }
+.first-run-banner strong { font-size: 15px; }
+.first-run-banner span { font-size: 13.5px; color: var(--cp-text-muted); line-height: 1.5; }
+.first-run-banner.working { border-color: var(--cp-link); border-left-color: var(--cp-link); background: rgba(0, 120, 212, 0.08); }
+.first-run-banner.clear { border-color: var(--cp-success); border-left-color: var(--cp-success); background: rgba(22, 163, 74, 0.08); }
 .work-status {
   display: grid;
   gap: 8px;

@@ -18,6 +18,14 @@ Everything runs on your machine, and the team never sends anything to other peop
 
 ## Releases
 
+### 4.2.0
+
+- Made the install steer itself onto the strongest model. The paste-in prompt and the Scout install guide now ask Scout to run setup on Claude Opus 4.8 when it is available, which is the model the team is tuned for and the one that follows the steps most reliably.
+- Fixed setup declaring itself done over an empty dashboard. The wizard now kicks off the first sweep, waits for the board to actually fill, and only then hands off. It also tells you the truth about timing: a first sweep takes about 5 to 10 minutes, not seconds.
+- Added a first-run banner on the dashboard so a new user is never staring at a blank board wondering what to do. It says the first sweep is running and the board fills as it goes, switches to a friendly all-caught-up note when there is genuinely nothing to show, and disappears once real items arrive.
+- Made the Microsoft-only extras a clear choice instead of a buried afterthought. Signing in as a Microsoft employee now surfaces the depth skills for Dash and Drew, and the internal MSX seller-data plugin, as recommended next steps during setup, each with a guided, verified walkthrough rather than a one-line mention at the end.
+- Added a "The Dream Team" shortcut to your desktop during install, so you can reopen the dashboard anytime with one click. It starts the app first if it is not already running, so it always lands on a live board.
+
 ### 4.1.0
 
 - Made the background automations install the same for everyone. When Scout sets up the team, it now places each automation's instructions exactly as written and then reads them back to confirm they match, instead of retyping them from memory. Before this, two people could end up with slightly different wording. If one does not match, Scout redoes just that one, once, then tells you rather than looping.

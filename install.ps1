@@ -235,6 +235,34 @@ if ($live) {
   Write-Host "[info] The app is still starting; it will appear at http://127.0.0.1:$port/ in a moment." -ForegroundColor Yellow
 }
 
+# 8b. Put a "The Dream Team" shortcut on the desktop so the user can reopen the dashboard anytime.
+#     It points at start-app.ps1, which starts the app only if it is not already running, then opens
+#     the dashboard - so one click always lands on a live board, even after a reboot.
+try {
+  $desktop = [Environment]::GetFolderPath('Desktop')
+  if ($desktop -and (Test-Path $desktop)) {
+    $lnkPath = Join-Path $desktop 'The Dream Team.lnk'
+    $startApp = Join-Path $InstallDir 'app\start-app.ps1'
+    $ws = New-Object -ComObject WScript.Shell
+    $sc = $ws.CreateShortcut($lnkPath)
+    $sc.TargetPath = (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
+    $sc.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$startApp`""
+    $sc.WorkingDirectory = (Join-Path $InstallDir 'app')
+    $sc.WindowStyle = 7
+    $sc.Description = 'Open The Dream Team dashboard (starts it first if needed)'
+    # Use Microsoft Scout's icon when we can find it, so the shortcut looks the part; otherwise leave the default.
+    $iconExe = @(
+      (Join-Path $env:ProgramFiles 'Microsoft Scout\Clawpilot\Microsoft Scout.exe'),
+      (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Scout\Clawpilot\Microsoft Scout.exe')
+    ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    if ($iconExe) { $sc.IconLocation = "$iconExe,0" }
+    $sc.Save()
+    Write-Host "[ok] Added a 'The Dream Team' shortcut to your desktop."
+  }
+} catch {
+  Write-Host "[info] Could not create a desktop shortcut (skipped, not a problem): $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
 # 9. Copy the finishing command; decide what to tell the user based on whether Scout is already running
 $cmd = '/daily-flow-setup'
 if ($ScoutMissing) {

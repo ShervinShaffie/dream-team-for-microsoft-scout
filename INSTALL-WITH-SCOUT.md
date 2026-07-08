@@ -14,6 +14,7 @@ When both are true, stop and hand off to the wizard in Step 4. Do not keep going
 ## Before you start
 
 - Confirm this is Windows 10 or 11. If it is macOS or Linux, stop and tell the user the Dream Team is Windows only today.
+- If you can, run this install on Claude Opus 4.8. It follows these steps most reliably. If this chat is on a different model, ask the user to switch to Claude Opus 4.8 before you continue. If Opus 4.8 is not available on their machine, use the best model they have and carry on.
 - Confirm this is the user's own machine and they want you to install software on it.
 - You will need permission to run shell commands and to read and write files. If you do not have it, ask for it. If it is refused, stop and say you cannot install without it.
 
