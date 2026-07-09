@@ -23,7 +23,7 @@ You can add your own employees or remove any of them except Major, so the roster
 ## What you need
 
 - Windows 10 or 11. See the Platform support section below.
-- [Microsoft Scout](https://learn.microsoft.com/en-us/microsoft-scout/), the desktop assistant this team runs inside. **Microsoft employees:** get Scout from **https://aka.ms/clawpilot** (the internal source for Microsoft). Everyone else: use the public Microsoft Scout link above.
+- [Microsoft Scout](https://learn.microsoft.com/en-us/microsoft-scout/), the desktop assistant this team runs inside. **Microsoft employees:** get Scout from an internal aka.ms site, not the link above.
 - Python 3.9 or newer. This is the only thing the app itself needs, and it is plain Python with no extra packages. If you do not have it, Scout can install it for you during setup, or you can get it from <https://www.python.org/downloads/> and tick "Add Python to PATH".
 - Scout allowed to run shell and file commands. The install lets Scout set everything up for you, so it needs permission to run commands and to read and write files. Scout asks for this, and you approve it when prompted.
 - A Microsoft 365 sign-in inside Scout. This is recommended so the team can see your own email, calendar, and Teams. A personal or a work account both work for the core experience.
