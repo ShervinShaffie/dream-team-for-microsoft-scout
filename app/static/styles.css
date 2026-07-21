@@ -228,6 +228,20 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 .employee-top { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
 .employee .role { color: var(--cp-text-muted); font-size: 12px; line-height: 1.35; }
 .employee .skills { color: var(--cp-text-soft); font-size: 12px; line-height: 1.35; }
+.task-source-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.task-source { display: grid; gap: 5px; padding: 14px; color: inherit; text-decoration: none; background: var(--cp-surface-soft); border: 1px solid var(--cp-border); border-radius: 12px; }
+.task-source:hover, .task-source:focus-visible { border-color: var(--cp-accent); outline: none; }
+.task-source-name { font-weight: 700; }
+.task-source-type, .task-source-owner { color: var(--cp-text-muted); font-size: 12px; }
+.engineering-commands { display: flex; flex-wrap: wrap; gap: 10px; }
+.engineering-repo-form { margin-top: 16px; }
+.engineering-repo-row { display: flex; gap: 10px; align-items: center; }
+.engineering-repo-row input { flex: 1; min-width: 220px; padding: 9px 12px; border: 1px solid var(--cp-border-strong); border-radius: 10px; background: var(--cp-surface); color: var(--cp-text); }
+.engineering-metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.engineering-section { margin-top: 20px; }
+.engineering-list { display: grid; gap: 12px; }
+@media (max-width: 900px) { .engineering-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .engineering-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .engineering-repo-row { align-items: stretch; flex-direction: column; } }
 /* --- 3.0.0 progressive trust + Always/Ask/Never protocol --- */
 .emp-trust-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .trust-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--cp-border-strong); white-space: nowrap; }

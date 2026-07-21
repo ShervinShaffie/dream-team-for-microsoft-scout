@@ -317,6 +317,17 @@ function renderEmployees() {
     `;
   }).join("");
 }
+
+function renderTaskSources() {
+  const sources = Array.isArray(state.taskSources) ? state.taskSources : [];
+  $("taskSources").innerHTML = sources.length ? sources.map((source) => `
+    <a class="task-source" href="${escapeHtml(source.url)}" target="_blank" rel="noopener">
+      <span class="task-source-name">${escapeHtml(source.name)}</span>
+      <span class="task-source-type">${escapeHtml(source.type)}</span>
+      <span class="task-source-owner">Tracked by ${escapeHtml(source.owner || "Reese")} ↗</span>
+    </a>
+  `).join("") : `<div class="empty">No task sources configured. Add taskSources to app/config.json.</div>`;
+}
 // Persist which protocol panels are open across re-renders.
 document.addEventListener("toggle", (event) => {
   const d = event.target;
@@ -590,6 +601,9 @@ const APPROVAL_GROUPS = [
   { key: "teams", icon: "💬", label: "Teams", types: ["teams"], actions: ["approved", "rejected"],
     legend: "Approve = Major carries out your instruction on the original chat for real (reply, 👍 react, forward, send) — drafts only if you ask · Reject = dismiss",
     capabilities: "CAN: post your reply for real in the original 1:1/chat; say \"draft it\" to get a draft instead. CAN'T: add a native emoji reaction (the tap-the-message kind) — that tool isn't available, so a \"👍 react\" request is sent as a short \"👍\" reply in the chat." },
+  { key: "task-tracking", icon: "📋", label: "Tracked tasks & decisions", types: ["task-tracking"], actions: ALL_ACTIONS,
+    legend: "Approve = Reese follows up privately · Reject = dismiss · Defer = snooze",
+    capabilities: "Reese tracks configured Planner, Loop, Microsoft To Do, and Azure DevOps sources. Approving asks Reese to investigate or prepare the next step; source-system changes require an explicit instruction." },
   { key: "suggestions", icon: "🧠", label: "Suggestions",
     types: ["meeting-prep", "commitment", "blocked-work", "outbound-draft", "research", "impact-highlight", "stale-thread"],
     actions: ALL_ACTIONS,
@@ -866,10 +880,10 @@ function renderChatStatus() {
   }
   if (active.type === "manual-signal-sweep") {
     renderWorkStatus(active, activeJobs.length, active.status === "in_progress"
-      ? "Major is running a broad sweep now across app state, Outlook email, Inbox invites, calendar, Teams, WorkIQ/research context, drafts/results, blockers, and impact highlights."
+      ? "Major is running a broad sweep now across app state, Outlook email, Inbox invites, calendar, Teams, Planner, Loop, To Do, ADO, WorkIQ/research context, drafts/results, blockers, and impact highlights."
       : active.status === "blocked"
         ? "Major's broad sweep is blocked. Check the activity log for details."
-        : "Broad Attention Major sweep queued. This view updates live as Major checks app state, Outlook, calendar, Teams, WorkIQ/research context, drafts/results, blockers, and impact highlights.");
+        : "Broad Attention Major sweep queued. This view updates live as Major checks app state, Outlook, calendar, Teams, Planner, Loop, To Do, ADO, WorkIQ/research context, drafts/results, blockers, and impact highlights.");
     return;
   }
   renderWorkStatus(active, activeJobs.length, active.status === "in_progress"
@@ -957,6 +971,7 @@ function render() {
   renderFirstRunBanner();
   renderMetrics();
   renderEmployees();
+  renderTaskSources();
   renderOnboardingCards();
   renderRemovedEmployees();
   renderGuardrails();

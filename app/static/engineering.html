@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Engineering Command Center</title>
+  <script>
+    (() => {
+      const valid = ["light", "dark", "sepia", "aurora"];
+      let saved = null;
+      try { saved = localStorage.getItem("df-theme"); } catch {}
+      const theme = valid.includes(saved) ? saved : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <span class="hero-eyebrow">Daily Flow · Engineering intelligence</span>
+        <h1>Engineering Command Center</h1>
+        <p class="subtitle">Read-only answers from Azure DevOps, IcM, Planner, Loop, and Microsoft To Do, coordinated by Reese.</p>
+      </div>
+      <div class="toolbar">
+        <a class="btn primary" href="index.html">Back to Dream Team</a>
+        <a class="btn" href="index.html#majorChatSection">Chat With Major</a>
+      </div>
+    </header>
+
+    <section class="card section">
+      <div class="section-head">
+        <div>
+          <h2>Ask Reese</h2>
+          <p class="subtitle">Each command creates a tracked job. Results return to Major chat and refresh this page.</p>
+        </div>
+      </div>
+      <div class="engineering-commands">
+        <button class="btn primary" data-engineering-intent="blockers">What's blocking me today?</button>
+        <button class="btn" data-engineering-intent="pull-requests">Summarize my PRs</button>
+        <button class="btn" data-engineering-intent="failing-pipelines">Any failing pipelines?</button>
+        <button class="btn" data-engineering-intent="sev2-incidents">Any Sev2 incidents?</button>
+      </div>
+      <form id="repoForm" class="engineering-repo-form">
+        <label class="field-label" for="repoName">Repository changes yesterday</label>
+        <div class="engineering-repo-row">
+          <input id="repoName" required placeholder="Repository name, for example AD-MSODS-Core">
+          <button class="btn" type="submit">What changed?</button>
+        </div>
+      </form>
+      <div id="queryStatus" class="attention-banner" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="metric-strip engineering-metrics">
+      <article class="card metric"><div class="metric-value" id="blockerCount">0</div><div class="metric-label">blockers</div></article>
+      <article class="card metric"><div class="metric-value" id="prCount">0</div><div class="metric-label">pull requests</div></article>
+      <article class="card metric"><div class="metric-value" id="pipelineCount">0</div><div class="metric-label">failing pipelines</div></article>
+      <article class="card metric"><div class="metric-value" id="incidentCount">0</div><div class="metric-label">Sev2 incidents</div></article>
+      <article class="card metric"><div class="metric-value" id="changeCount">0</div><div class="metric-label">repository changes</div></article>
+      <article class="card metric"><div class="metric-value" id="errorCount">0</div><div class="metric-label">source errors</div></article>
+    </section>
+
+    <section class="card section">
+      <div class="section-head"><div><h2>Source status</h2><p class="subtitle" id="freshness">Loading...</p></div></div>
+      <div class="task-source-grid" id="engineeringSources"></div>
+      <div class="engineering-list" id="sourceErrors"></div>
+    </section>
+
+    <section class="card section engineering-section"><h2>What's blocking me</h2><div class="engineering-list" id="blockers"></div></section>
+    <section class="card section engineering-section"><h2>Pull requests</h2><div class="engineering-list" id="pullRequests"></div></section>
+    <section class="card section engineering-section"><h2>Failing pipelines</h2><div class="engineering-list" id="failingPipelines"></div></section>
+    <section class="card section engineering-section"><h2>Sev2 / Sev2.5 incidents</h2><div class="engineering-list" id="incidents"></div></section>
+    <section class="card section engineering-section"><h2>Repository changes</h2><div class="engineering-list" id="repositoryChanges"></div></section>
+    <section class="card section engineering-section"><h2>Recent questions</h2><div class="engineering-list" id="recentQueries"></div></section>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+    })[char]);
+
+    function renderObservation(item) {
+      const link = item.source_url
+        ? `<a href="${esc(item.source_url)}" target="_blank" rel="noopener">Open source ↗</a>`
+        : "";
+      const meta = [item.source_system, item.repository, item.state, item.severity, item.owner]
+        .filter(Boolean).map(value => `<span>${esc(value)}</span>`).join("");
+      return `<article class="item">
+        <div class="item-top"><h3>${esc(item.title)}</h3><span class="status ${esc(item.status || "active")}">${esc(item.state || item.status || "active")}</span></div>
+        <div class="small-meta">${meta}<span>${esc(item.source_updated_at || item.observed_at || "")}</span></div>
+        <div class="preview">${esc(item.summary)}</div>
+        ${item.blocker_reason ? `<div class="preview"><strong>Blocker:</strong> ${esc(item.blocker_reason)}</div>` : ""}
+        ${link}
+      </article>`;
+    }
+
+    function renderList(id, items, emptyText) {
+      $(id).innerHTML = items.length ? items.map(renderObservation).join("") : `<div class="empty">${esc(emptyText)}</div>`;
+    }
+
+    function renderQueries(items) {
+      $("recentQueries").innerHTML = items.length ? items.map(job => `<article class="item">
+        <div class="item-top"><h3>${esc(job.title)}</h3><span class="status ${esc(job.status)}">${esc(job.status)}</span></div>
+        <div class="small-meta"><span>${esc(job.employee)}</span><span>${esc(job.updated_at)}</span></div>
+        <div class="preview">${esc(job.result_summary || job.blocker || "Waiting for Reese.")}</div>
+      </article>`).join("") : `<div class="empty">No engineering questions yet.</div>`;
+    }
+
+    async function loadSnapshot() {
+      const response = await fetch("/api/engineering/snapshot", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || response.statusText);
+      const counts = data.counts || {};
+      $("blockerCount").textContent = counts.blockers || 0;
+      $("prCount").textContent = counts.pullRequests || 0;
+      $("pipelineCount").textContent = counts.failingPipelines || 0;
+      $("incidentCount").textContent = counts.incidents || 0;
+      $("changeCount").textContent = counts.repositoryChanges || 0;
+      $("errorCount").textContent = counts.sourceErrors || 0;
+      $("freshness").textContent = `Last refreshed ${new Date(data.serverTime).toLocaleString()} · reporting timezone ${data.timeZone}`;
+      $("engineeringSources").innerHTML = (data.sources || []).map(source => `<a class="task-source" href="${esc(source.url)}" target="_blank" rel="noopener">
+        <span class="task-source-name">${esc(source.name)}</span>
+        <span class="task-source-type">${esc(source.type)}</span>
+        <span class="task-source-owner">${esc(source.organization || source.project || source.user || "Configured")} ↗</span>
+      </a>`).join("") || `<div class="empty">No engineering sources configured.</div>`;
+      renderList("sourceErrors", data.sourceErrors || [], "All configured sources that were checked are available.");
+      renderList("blockers", data.blockers || [], "No active blockers recorded.");
+      renderList("pullRequests", data.pullRequests || [], "No PR observations recorded.");
+      renderList("failingPipelines", data.failingPipelines || [], "No failing pipelines recorded.");
+      renderList("incidents", data.incidents || [], "No active Sev2 observations recorded.");
+      renderList("repositoryChanges", data.repositoryChanges || [], "No repository changes recorded.");
+      renderQueries(data.recentQueries || []);
+    }
+
+    async function queueQuery(intent, repository = "") {
+      $("queryStatus").className = "attention-banner active queued";
+      $("queryStatus").textContent = "Queuing Reese engineering query...";
+      const response = await fetch("/api/engineering/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent, repository })
+      });
+      const data = await response.json();
+      if (!response.ok || data.ok === false) throw new Error(data.error || response.statusText);
+      $("queryStatus").className = "attention-banner active";
+      $("queryStatus").innerHTML = `Reese is working on it. <a href="index.html#majorChatSection">Open Major chat</a>`;
+      await loadSnapshot();
+    }
+
+    document.querySelectorAll("[data-engineering-intent]").forEach(button => {
+      button.addEventListener("click", async () => {
+        try { await queueQuery(button.dataset.engineeringIntent); }
+        catch (error) { $("queryStatus").textContent = `Could not queue query: ${error.message}`; }
+      });
+    });
+    $("repoForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      try { await queueQuery("repo-changes", $("repoName").value.trim()); }
+      catch (error) { $("queryStatus").textContent = `Could not queue query: ${error.message}`; }
+    });
+
+    loadSnapshot().catch(error => { $("queryStatus").textContent = `Could not load engineering data: ${error.message}`; });
+    setInterval(() => loadSnapshot().catch(() => {}), 15000);
+  </script>
+</body>
+</html>

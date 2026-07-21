@@ -48,6 +48,75 @@ def _load_local_config() -> dict:
 
 _LOCAL_CONFIG = _load_local_config()
 
+TASK_SOURCE_TYPES = {"planner", "loop", "microsoft-todo", "azure-devops"}
+ENGINEERING_OBSERVATION_TYPES = {
+    "work-item", "pull-request", "pipeline", "incident", "commit", "repository-change", "source-error",
+}
+ENGINEERING_QUERY_INTENTS = {
+    "blockers": "What's blocking me today?",
+    "pull-requests": "Summarize my PRs.",
+    "failing-pipelines": "Any failing pipelines?",
+    "sev2-incidents": "Any Sev2 incidents?",
+    "repo-changes": "What changed in repo {repo} yesterday?",
+}
+
+
+def configured_task_sources() -> list[dict[str, Any]]:
+    """Return safe, enabled task sources from the per-user local configuration."""
+    raw_sources = _LOCAL_CONFIG.get("taskSources", [])
+    if not isinstance(raw_sources, list):
+        return []
+    sources = []
+    for raw in raw_sources:
+        if not isinstance(raw, dict):
+            continue
+        source_type = str(raw.get("type") or "").strip().lower()
+        url = str(raw.get("url") or "").strip()
+        if source_type not in TASK_SOURCE_TYPES or not url.lower().startswith("https://"):
+            continue
+        sources.append({
+            "type": source_type,
+            "name": str(raw.get("name") or source_type).strip(),
+            "url": url,
+            "enabled": raw.get("enabled", True) is not False,
+            "owner": "Reese",
+        })
+    return [source for source in sources if source["enabled"]]
+
+
+def configured_task_source_url(source_type: str) -> str:
+    normalized = str(source_type or "").strip().lower()
+    return next((source["url"] for source in configured_task_sources() if source["type"] == normalized), "")
+
+
+def configured_engineering_sources() -> list[dict[str, Any]]:
+    raw_sources = _LOCAL_CONFIG.get("engineeringSources", [])
+    if not isinstance(raw_sources, list):
+        return []
+    sources = []
+    for raw in raw_sources:
+        if not isinstance(raw, dict):
+            continue
+        source_type = str(raw.get("type") or "").strip().lower()
+        if source_type not in {"azure-devops", "icm"}:
+            continue
+        sources.append({
+            "type": source_type,
+            "name": str(raw.get("name") or source_type).strip(),
+            "url": str(raw.get("url") or "").strip(),
+            "organization": str(raw.get("organization") or "").strip(),
+            "project": str(raw.get("project") or "").strip(),
+            "user": str(raw.get("user") or "").strip(),
+            "repositories": raw.get("repositories") if isinstance(raw.get("repositories"), list) else [],
+            "teams": raw.get("teams") if isinstance(raw.get("teams"), list) else [],
+            "enabled": raw.get("enabled", True) is not False,
+        })
+    return [source for source in sources if source["enabled"]]
+
+
+def engineering_timezone() -> str:
+    return str(_LOCAL_CONFIG.get("engineeringTimeZone") or "Europe/Dublin").strip()
+
 
 def _setting(config_key: str, env_key: str, default):
     value = os.environ.get(env_key)
@@ -152,7 +221,7 @@ EMPLOYEES = [
     ("Major", "Chief of Staff", "Routes work, enforces approval policy, and proactively surfaces what you should know."),
     ("Riley", "Inbox Agent", "Triage, draft replies, route urgent asks."),
     ("Mina", "Meeting Agent", "Prep, notes, summaries, follow-ups."),
-    ("Reese", "Research Agent", "Cited findings and customer/account context."),
+    ("Reese", "Research & Task Intelligence Agent", "Tracks Planner, Loop, To Do, ADO, decisions, blockers, updates, and cited context."),
     ("Tilly", "Scheduling Agent", "Availability, RSVP risks, scheduling drafts."),
     ("Dash", "Dashboard Agent", "Status, metrics, approval queue, check-ins."),
     ("Drew", "Content Creator Agent", "Docs, decks, proposals, demo packs."),
@@ -190,7 +259,7 @@ EMPLOYEE_CONFIG = {
     "Riley": {"lane": "inbox", "mode": "adjustable", "default": "draft"},
     "Mina": {"lane": "meetings", "mode": "adjustable", "default": "draft"},
     "Reese": {"lane": "research", "mode": "fixed", "default": "autonomous",
-              "note": "Research only — no outward action. Proactively researches and posts cited findings to Results for you; nothing is ever sent to others."},
+              "note": "Research and task intelligence only — no outward action. Tracks configured work sources and posts grounded findings for you; nothing is sent to others."},
     "Tilly": {"lane": "scheduling", "mode": "adjustable", "default": "draft"},
     "Dash": {"lane": "visibility", "mode": "fixed", "default": "autonomous",
              "note": "Always keeps the cockpit current — metrics, approvals, blockers, status. Takes no mailbox or outward actions."},
@@ -333,12 +402,14 @@ Required signal sources and what to look for:
 5. Inbox calendar invites: the Outlook Inbox is the single source of truth for calendar approval cards. Enumerate current Inbox messages, read headers for every message, classify only Exchange/Outlook meeting evidence, match each confirmed invite to the real calendar event, extract date/time/location/organizer/showAs/response status, check same-day conflicts, and POST decision-grade cards to /api/inbox-invites. Include sourceUrl (the event's Graph webLink, or the invite message webLink) on each invite so the user can open the original. Always POST the COMPLETE current set of Inbox-resident invites in a single call with completeSnapshot=true (the default) so the backend retires any calendar card whose invite is no longer in the Inbox. If there are zero invites in the Inbox right now, still POST {{"invites": [], "completeSnapshot": true}} so all stale calendar cards are cleared. Never post weak placeholders, and never skip the POST just because the Inbox has no invites.
 6. Calendar and schedule: proactively identify anything the user should know about, with special priority on meetings to prepare for today and the next day. Check today's and tomorrow's calendar for customer/executive/external meetings, prep-heavy meetings, meetings with missing context, dense blocks, direct conflicts, tentative/unanswered items, OOF blocks, no-buffer risks, and meetings that imply follow-up or content prep. For each prep gap that needs a decision or artifact, POST /api/review-signals with sourceType='meeting-prep' so it appears in Approval inbox rather than being buried in a sweep summary.
 7. Teams/chat signals: always inspect recent Teams messages directed at the user: 1:1 chats, direct @mentions, messages naming the user, replies to the user, direct asks in group/meeting chats, and messages requesting the user's response, review, decision, or follow-up. Then scan other relevant Teams chats/messages for decisions, blockers, promised follow-ups, customer/account context, and items that should become a Daily Flow task, draft, approval, or research handoff. Treat directed Teams messages as high-priority "you should know" candidates unless clearly FYI/no-action. For every important directed Teams item, POST /api/review-signals with sourceType='teams', subject/title, sender/from, receivedAt, sourceId/chatId/messageId, sourceUrl (the Teams message webUrl deep link so the user can open the original chat), signalType, priority, summary, and recommendation so it appears in the Approval inbox or Major's sweep summary instead of being buried. Teams cards are NOT exhaustively enumerable, so never post completeSnapshot for teams; to clear a Teams card after the user has replied/handled it, pass resolvedIds=[sourceId,...] for that exact message. Do not message anyone else without approval.
-8. Meeting/action context: look for open meeting action items, follow-up commitments, prep briefs needed, decisions from recent meetings, and artifacts requested for upcoming meetings today or tomorrow.
-9. Research/WorkIQ context: check open research threads or recent work context relevant to active jobs, upcoming meetings, customer requests, drafts, and proposals. Route useful findings to Reese or Drew and cite/source them in private results.
-10. Drafts/results/documents: inspect completed work for missing or stale result links, drafts needing review, docs/decks that should be surfaced in Results, and artifacts that need to be saved under {ONEDRIVE_DOCUMENT_ROOT}.
-11. Dashboard/work-ledger health: update private events, result summaries, approval cards, blocked work, today's activity log, and concise work-ledger entries so the cockpit changes as soon as useful information is found.
-12. Body-of-work capture: when actual work is completed or discovered, POST /api/work-ledger with brief entries for meetings the user actively participated in, documents/decks/briefs/drafts/artifacts created, meaningful internal or customer collaboration, people worked with, customer/account context, research applied to work, and completed follow-up work. Write entries as the user's accomplishments, not employee actions: say "Created..." or "Prepared...", never "Drew created..." or "Mina accepted...". Capture who the work was for with people/customer/account context whenever available. Keep entries leadership-ready, bullet-friendly, and much shorter than Activity Log entries. Include impactSummary/impactLevel only when the item also meets the impact definition; do not inflate routine work into impact. Do not capture low-value internal scheduling/RSVP cleanup unless it is tied to a customer/executive/partner meeting worth reporting. When the work is about OTHERS adopting, enabling, or replicating the Dream Team / Scout (colleagues onboarded, workshops or how-to sessions delivered, mentoring, shared IP, cross-org demand or inbound interest), set category to 'adoption', 'enablement', or 'mentoring' and include the people/customer/org so it feeds the Adoption Ripple view.
-13. Additional Approval inbox workflow candidates: create /api/review-signals cards for meeting prep gaps (sourceType='meeting-prep'), follow-up commitments (sourceType='commitment'), blocked employee work (sourceType='blocked-work'), outbound drafts ready for review (sourceType='outbound-draft'), customer research opportunities (sourceType='research'), daily impact highlight candidates (sourceType='impact-highlight'), and stale thread nudges (sourceType='stale-thread'). Only create impact-highlight candidates for outcomes that moved the needle for Microsoft, customer/business results, measurable influence, shipped/adopted work, risk removed with clear business value, or letters/messages of gratitude. Do not treat scans, approvals queued, work organized, or monitoring as impact. If there is no meaningful outcome, create no impact card, but still capture actual completed work in /api/work-ledger. Do not create cards for CRM update proposals, file/share risk, or document/deck quality issues.
+8. Reese task intelligence: read every enabled source in state.taskSources using Scout's authenticated tools. Cover Planner tasks, Microsoft To Do, the configured Loop workspace, and the configured Azure DevOps dashboard. Track tasks assigned to the user, due/overdue work, status changes, decisions, blockers, dependencies, review requests, and meaningful updates. POST each currently actionable item to /api/review-signals with sourceType set to planner, loop, microsoft-todo, or azure-devops; include a stable sourceId, sourceUrl, title, updated time, priority, summary, and recommendation. Reconcile each successfully enumerated source type independently. Never claim a source was checked when its authenticated tool was unavailable. When a tracked item is verified complete and represents substantive work by the user, POST a concise, de-duplicated accomplishment to /api/work-ledger with the same sourceType and sourceId. Do not log mere monitoring or status changes as completed work.
+9. Reese engineering intelligence: read state.engineeringSources and use Scout-authenticated Azure DevOps and IcM tools. Track blocked work items, authored/review-requested PRs, unresolved PR comments and policy state, failing pipelines, active Sev2/Sev2.5 incidents, and configured repository changes. POST grounded records to /api/engineering/observations. For an unavailable source, post a source-error observation and leave prior records active; never report an all-clear from missing data. Route actionable blockers and decisions to /api/review-signals. Engineering source access is read-only unless the user separately approves a write.
+10. Meeting/action context: look for open meeting action items, follow-up commitments, prep briefs needed, decisions from recent meetings, and artifacts requested for upcoming meetings today or tomorrow.
+11. Research/WorkIQ context: check open research threads or recent work context relevant to active jobs, upcoming meetings, customer requests, drafts, and proposals. Route useful findings to Reese or Drew and cite/source them in private results.
+12. Drafts/results/documents: inspect completed work for missing or stale result links, drafts needing review, docs/decks that should be surfaced in Results, and artifacts that need to be saved under {ONEDRIVE_DOCUMENT_ROOT}.
+13. Dashboard/work-ledger health: update private events, result summaries, approval cards, blocked work, today's activity log, and concise work-ledger entries so the cockpit changes as soon as useful information is found.
+14. Body-of-work capture: when actual work is completed or discovered, POST /api/work-ledger with brief entries for meetings the user actively participated in, documents/decks/briefs/drafts/artifacts created, meaningful internal or customer collaboration, people worked with, customer/account context, research applied to work, and completed follow-up work. Write entries as the user's accomplishments, not employee actions: say "Created..." or "Prepared...", never "Drew created..." or "Mina accepted...". Capture who the work was for with people/customer/account context whenever available. Keep entries leadership-ready, bullet-friendly, and much shorter than Activity Log entries. Include impactSummary/impactLevel only when the item also meets the impact definition; do not inflate routine work into impact. Do not capture low-value internal scheduling/RSVP cleanup unless it is tied to a customer/executive/partner meeting worth reporting. When the work is about OTHERS adopting, enabling, or replicating the Dream Team / Scout (colleagues onboarded, workshops or how-to sessions delivered, mentoring, shared IP, cross-org demand or inbound interest), set category to 'adoption', 'enablement', or 'mentoring' and include the people/customer/org so it feeds the Adoption Ripple view.
+15. Additional Approval inbox workflow candidates: create /api/review-signals cards for meeting prep gaps (sourceType='meeting-prep'), follow-up commitments (sourceType='commitment'), blocked employee work (sourceType='blocked-work'), outbound drafts ready for review (sourceType='outbound-draft'), customer research opportunities (sourceType='research'), daily impact highlight candidates (sourceType='impact-highlight'), and stale thread nudges (sourceType='stale-thread'). Only create impact-highlight candidates for outcomes that moved the needle for Microsoft, customer/business results, measurable influence, shipped/adopted work, risk removed with clear business value, or letters/messages of gratitude. Do not treat scans, approvals queued, work organized, or monitoring as impact. If there is no meaningful outcome, create no impact card, but still capture actual completed work in /api/work-ledger. Do not create cards for CRM update proposals, file/share risk, or document/deck quality issues.
 
 Rules:
 - Approval-inbox lifecycle is evidence-based. A pending card is removed ONLY when the user acts on it in the app, when you confirm the source was handled (resolvedIds, or a completeSnapshot enumeration where its sourceId is gone), or when a calendar invite / meeting-prep card passes its meeting end time (auto-expired by the server). Never expect a card to vanish merely because a sweep did not re-list it, and never omit an item to make it disappear.
@@ -357,7 +428,7 @@ OPERATING_LOOP = [
     {
         "time": "Every 30 min",
         "title": "Signal sweep",
-        "detail": "Riley, Mina, Tilly, Dash, and Reese check email, Inbox-resident calendar invites, Teams, WorkIQ context, approvals, and open research threads.",
+        "detail": "Riley, Mina, Tilly, Dash, and Reese check email, Inbox-resident calendar invites, Teams, configured Planner/Loop/To Do/ADO sources, WorkIQ context, approvals, and open research threads.",
     },
     {
         "time": "Every 30 min",
@@ -850,6 +921,28 @@ def init_db() -> None:
                 updated_at TEXT NOT NULL DEFAULT ''
             );
 
+            CREATE TABLE IF NOT EXISTS engineering_observations (
+                id TEXT PRIMARY KEY,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                observed_at TEXT NOT NULL,
+                source_system TEXT NOT NULL,
+                source_scope TEXT NOT NULL,
+                source_type TEXT NOT NULL,
+                source_id TEXT NOT NULL,
+                source_url TEXT NOT NULL DEFAULT '',
+                repository TEXT NOT NULL DEFAULT '',
+                title TEXT NOT NULL,
+                state TEXT NOT NULL DEFAULT '',
+                severity TEXT NOT NULL DEFAULT '',
+                owner TEXT NOT NULL DEFAULT '',
+                source_updated_at TEXT NOT NULL DEFAULT '',
+                summary TEXT NOT NULL,
+                blocker_reason TEXT NOT NULL DEFAULT '',
+                details_json TEXT NOT NULL DEFAULT '{}',
+                status TEXT NOT NULL DEFAULT 'active'
+            );
+
             CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status, created_at);
             CREATE INDEX IF NOT EXISTS idx_jobs_thread ON jobs(thread_id, created_at);
             CREATE INDEX IF NOT EXISTS idx_messages_thread ON chat_messages(thread_id, created_at);
@@ -857,6 +950,7 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_inbox_signals_status ON inbox_signals(status, received_at);
             CREATE INDEX IF NOT EXISTS idx_work_ledger_date ON work_ledger_entries(status, occurred_at);
             CREATE INDEX IF NOT EXISTS idx_sweep_runs_started ON sweep_runs(started_at);
+            CREATE INDEX IF NOT EXISTS idx_engineering_active ON engineering_observations(status, source_type, updated_at);
 
             CREATE TRIGGER IF NOT EXISTS preserve_approvals_delete
             BEFORE DELETE ON approvals
@@ -899,6 +993,12 @@ def init_db() -> None:
             BEGIN
                 SELECT RAISE(ABORT, 'Retention policy: work and impact ledger history is preserved forever.');
             END;
+
+            CREATE TRIGGER IF NOT EXISTS preserve_engineering_observations_delete
+            BEFORE DELETE ON engineering_observations
+            BEGIN
+                SELECT RAISE(ABORT, 'Retention policy: engineering observation history is preserved forever.');
+            END;
             """
         )
         # --- Additive migrations (3.0.0): progressive trust + per-agent protocol ---
@@ -919,6 +1019,12 @@ def init_db() -> None:
         ensure_column(db, "employees", "skills_json", "TEXT NOT NULL DEFAULT '[]'")
         ensure_column(db, "employees", "source_text", "TEXT NOT NULL DEFAULT ''")
         ensure_column(db, "employees", "note", "TEXT NOT NULL DEFAULT ''")
+        ensure_column(db, "engineering_observations", "source_scope", "TEXT NOT NULL DEFAULT ''")
+        db.execute("DROP INDEX IF EXISTS idx_engineering_source")
+        db.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_engineering_source "
+            "ON engineering_observations(source_system, source_scope, source_type, source_id)"
+        )
         db.execute(
             "INSERT INTO app_meta(key, value, updated_at) VALUES('history_retention_policy', ?, ?) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
@@ -950,6 +1056,10 @@ def init_db() -> None:
             db.execute(
                 "INSERT OR IGNORE INTO employees(name, role, detail, created_at) VALUES(?, ?, ?, ?)",
                 (name, role, detail, utc_now()),
+            )
+            db.execute(
+                "UPDATE employees SET role = ?, detail = ? WHERE name = ? AND origin = 'builtin'",
+                (role, detail, name),
             )
         # Re-seed trust levels to the v3.1.0 model (Draft default for adjustable employees; fixed
         # Autonomous for Major/Dash/Reese). Bumped to version 2 so existing installs migrate once.
@@ -1231,6 +1341,7 @@ def create_review_follow_up_job(
         "blocked-work": "Apply the user's unblock direction, retry or reroute the work, and report the result or blocker.",
         "outbound-draft": "Carry out the user's instruction on this outbound item against its intended recipient — actually send/post it (draft only if they asked). Report send_state with the link.",
         "research": "Run the private research, cite/source findings, and prepare a concise summary or artifact for review.",
+        "task-tracking": "Inspect the original tracked item, apply the user's private follow-up direction, and report the updated task, decision, blocker, or completion evidence. Do not modify the source system unless the user explicitly requested that exact change.",
         "stale-thread": "Refresh the stale thread with a real status update, next action, blocker, or completion result.",
         "teams": ("Do EXACTLY what the user told you to this Teams message, against the ORIGINAL chat "
                   "(use the chatId/messageId in the Source ID; never start a new chat). Their instruction "
@@ -1702,6 +1813,7 @@ def looks_like_meeting_message(raw: dict[str, Any]) -> bool:
     DAILY_FLOW_WORKFLOW_TYPES = {
         "meeting-prep", "commitment", "follow-up", "followup", "blocked-work",
         "outbound-draft", "research", "impact-highlight", "stale-thread", "thread-nudge",
+        "task-tracking", "planner", "loop", "microsoft-todo", "azure-devops",
     }
     if is_explicit_chat or (explicit_types & DAILY_FLOW_WORKFLOW_TYPES):
         return False
@@ -1766,6 +1878,8 @@ def review_signal_action_type(raw: dict[str, Any]) -> str:
         return "outbound-draft"
     if "research" in source_type:
         return "research"
+    if source_type in TASK_SOURCE_TYPES or "task-tracking" in source_type:
+        return "task-tracking"
     if "stale" in source_type or "thread-nudge" in source_type:
         return "stale-thread"
     if "team" in source_type or "chat" in source_type or "mention" in source_type:
@@ -1787,6 +1901,7 @@ def review_signal_metadata(action_type: str) -> tuple[str, str, str]:
         "blocked-work": ("Dash", "Blocked work needs decision", "Daily Flow blocker"),
         "outbound-draft": ("Riley", "Outbound draft ready for review", "Draft approval"),
         "research": ("Reese", "Customer research opportunity", "Research queue"),
+        "task-tracking": ("Reese", "Tracked work needs attention", "Task intelligence"),
         "impact-highlight": ("Logan", "Impact highlight candidate", "Impact ledger"),
         "stale-thread": ("Major", "Stale thread needs attention", "Major thread"),
     }.get(action_type, ("Major", "Review needed", "Daily Flow"))
@@ -1798,6 +1913,7 @@ _SOURCE_LINK_LABELS = {
     "teams": "Open in Teams",
     "calendar": "Open invite",
     "meeting-prep": "Open in calendar",
+    "task-tracking": "Open tracked item",
 }
 
 
@@ -1822,11 +1938,11 @@ def approval_source_link(action_type: str, details: dict[str, Any]) -> dict[str,
 # calendar cards are de-duplicated by their own subject+organizer+time+sourceId id only.
 DEDUPE_TYPES = {
     "email", "teams", "meeting-prep", "commitment", "blocked-work",
-    "outbound-draft", "research", "impact-highlight", "stale-thread",
+    "outbound-draft", "research", "task-tracking", "impact-highlight", "stale-thread",
 }
 ADVISORY_DEDUPE_TYPES = {
     "meeting-prep", "commitment", "blocked-work", "outbound-draft",
-    "research", "impact-highlight", "stale-thread",
+    "research", "task-tracking", "impact-highlight", "stale-thread",
 }
 
 _DEDUPE_REPLY = re.compile(r"^\s*(re|fw|fwd)\s*:\s*", re.IGNORECASE)
@@ -1867,7 +1983,7 @@ def approval_content_key(action_type: str, subject: str, sender: str) -> str:
 
 
 # --- Decision memory (3.0.0): stop re-surfacing items the user already dismissed ---
-DECISION_MEMORY_TYPES = ("email", "teams")
+DECISION_MEMORY_TYPES = ("email", "teams", "task-tracking")
 DECISION_MEMORY_TTL_DAYS = {"rejected": 14, "deferred": 3}
 
 
@@ -2589,10 +2705,16 @@ def upsert_inbox_signals(
         received_at = str(raw.get("receivedAt") or raw.get("receivedDateTime") or raw.get("date") or "").strip()
         recommendation = str(raw.get("recommendation") or "").strip()
         sender_text = str(sender_value).strip()
+        origin_source_type = str(raw.get("sourceType") or raw.get("channel") or "").strip().lower()
+        source_url = str(raw.get("sourceUrl") or raw.get("webUrl") or raw.get("webLink") or "").strip()
+        if action_type == "task-tracking" and not source_url:
+            source_url = configured_task_source_url(origin_source_type)
         details = {
             **raw,
             "type": f"{action_type}-review-signal",
+            "originSourceType": origin_source_type,
             "sourceType": action_type,
+            "sourceUrl": source_url,
             "sourceId": source_id,
             "subject": subject,
             "sender": sender_text,
@@ -2712,7 +2834,11 @@ def upsert_inbox_signals(
         upserted += 1
     retired = 0
     if reconcile:
-        scope = {str(t).strip() for t in (covered_types or []) if str(t).strip()}
+        scope = {
+            review_signal_action_type({"sourceType": str(source_type).strip()})
+            for source_type in (covered_types or [])
+            if str(source_type).strip()
+        }
         if not scope:
             scope = set(present_types)
         resolved_set = {str(s).strip().lower() for s in (resolved_ids or []) if str(s).strip()}
@@ -3285,6 +3411,220 @@ def upsert_work_ledger_entries(db: sqlite3.Connection, raw_entries: list[Any]) -
     return {"upserted": upserted}
 
 
+def stable_engineering_observation_id(
+    source_system: str,
+    source_scope: str,
+    source_type: str,
+    source_id: str,
+) -> str:
+    digest = hashlib.sha256(
+        f"{source_system}|{source_scope}|{source_type}|{source_id}".encode("utf-8")
+    ).hexdigest()[:24]
+    return f"eng_{digest}"
+
+
+def upsert_engineering_observations(
+    db: sqlite3.Connection,
+    observations: list[Any],
+    *,
+    reconcile: bool = False,
+    covered_scopes: list[Any] | None = None,
+) -> dict[str, Any]:
+    if not isinstance(observations, list):
+        raise ValueError("observations must be an array")
+    now = utc_now()
+    live_ids_by_scope: dict[tuple[str, str], set[str]] = {}
+    upserted = 0
+    for raw in observations:
+        if not isinstance(raw, dict):
+            raise ValueError("each engineering observation must be an object")
+        source_system = str(raw.get("sourceSystem") or "").strip().lower()
+        source_scope = str(raw.get("sourceScope") or "").strip()
+        source_type = str(raw.get("sourceType") or "").strip().lower()
+        source_id = str(raw.get("sourceId") or "").strip()
+        title = str(raw.get("title") or "").strip()
+        summary = str(raw.get("summary") or "").strip()
+        if source_system not in {"azure-devops", "icm"}:
+            raise ValueError("sourceSystem must be azure-devops or icm")
+        if not source_scope:
+            raise ValueError("each engineering observation requires sourceScope")
+        if source_type not in ENGINEERING_OBSERVATION_TYPES:
+            raise ValueError(f"unsupported engineering sourceType: {source_type}")
+        if not source_id or not title or not summary:
+            raise ValueError("each engineering observation requires sourceId, title, and summary")
+        status = str(raw.get("status") or "active").strip().lower()
+        if status not in {"active", "resolved", "superseded"}:
+            raise ValueError("engineering observation status must be active, resolved, or superseded")
+        observation_id = stable_engineering_observation_id(
+            source_system, source_scope, source_type, source_id
+        )
+        live_ids_by_scope.setdefault((source_system, source_scope), set()).add(observation_id)
+        db.execute(
+            """
+            INSERT INTO engineering_observations(
+                id, created_at, updated_at, observed_at, source_system, source_scope, source_type, source_id,
+                source_url, repository, title, state, severity, owner, source_updated_at,
+                summary, blocker_reason, details_json, status
+            )
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                updated_at=excluded.updated_at,
+                observed_at=excluded.observed_at,
+                source_url=excluded.source_url,
+                repository=excluded.repository,
+                title=excluded.title,
+                state=excluded.state,
+                severity=excluded.severity,
+                owner=excluded.owner,
+                source_updated_at=excluded.source_updated_at,
+                summary=excluded.summary,
+                blocker_reason=excluded.blocker_reason,
+                details_json=excluded.details_json,
+                status=excluded.status
+            """,
+            (
+                observation_id, now, now, str(raw.get("observedAt") or now), source_system, source_scope,
+                source_type, source_id, str(raw.get("sourceUrl") or "").strip(),
+                str(raw.get("repository") or "").strip(),
+                title, str(raw.get("state") or "").strip(), str(raw.get("severity") or "").strip(),
+                str(raw.get("owner") or "").strip(), str(raw.get("updatedAt") or "").strip(), summary,
+                str(raw.get("blockerReason") or "").strip(), json.dumps(raw), status,
+            ),
+        )
+        upserted += 1
+    retired = 0
+    recovered_errors = 0
+    if reconcile:
+        if not isinstance(covered_scopes, list) or not covered_scopes:
+            raise ValueError("reconcile requires coveredScopes")
+        for raw_scope in covered_scopes:
+            if not isinstance(raw_scope, dict):
+                raise ValueError("each coveredScopes entry must be an object")
+            source_system = str(raw_scope.get("sourceSystem") or "").strip().lower()
+            source_scope = str(raw_scope.get("sourceScope") or "").strip()
+            source_types = {
+                str(source_type).strip().lower()
+                for source_type in (raw_scope.get("sourceTypes") or [])
+                if str(source_type).strip().lower() in ENGINEERING_OBSERVATION_TYPES
+                and str(source_type).strip().lower() != "source-error"
+            }
+            if source_system not in {"azure-devops", "icm"} or not source_scope or not source_types:
+                raise ValueError(
+                    "each coveredScopes entry requires sourceSystem, sourceScope, and sourceTypes"
+                )
+            placeholders = ",".join("?" for _ in source_types)
+            params: list[Any] = [now, source_system, source_scope, *sorted(source_types)]
+            sql = (
+                f"UPDATE engineering_observations SET status='superseded', updated_at=? "
+                f"WHERE status='active' AND source_system=? AND source_scope=? "
+                f"AND source_type IN ({placeholders})"
+            )
+            scope_live_ids = live_ids_by_scope.get((source_system, source_scope), set())
+            if scope_live_ids:
+                id_placeholders = ",".join("?" for _ in scope_live_ids)
+                sql += f" AND id NOT IN ({id_placeholders})"
+                params.extend(sorted(scope_live_ids))
+            retired += db.execute(sql, params).rowcount
+            recovered_errors += db.execute(
+                "UPDATE engineering_observations SET status='resolved', updated_at=? "
+                "WHERE status='active' AND source_system=? AND source_scope=? AND source_type='source-error'",
+                (now, source_system, source_scope),
+            ).rowcount
+    add_event(db, "Reese", "Engineering intelligence refreshed",
+              f"Persisted {upserted} observation(s); retired {retired} stale observation(s).")
+    touch_version(db)
+    return {"count": upserted, "retired": retired, "recoveredErrors": recovered_errors}
+
+
+def engineering_snapshot(db: sqlite3.Connection) -> dict[str, Any]:
+    observations = rows(db.execute(
+        "SELECT * FROM engineering_observations WHERE status = 'active' ORDER BY updated_at DESC LIMIT 1000"
+    ))
+    for observation in observations:
+        try:
+            observation["details"] = json.loads(observation.pop("details_json") or "{}")
+        except json.JSONDecodeError:
+            observation["details"] = {}
+    blockers = [
+        item for item in observations
+        if item.get("blocker_reason") or str(item.get("state") or "").lower() == "blocked"
+    ]
+    pull_requests = [item for item in observations if item["source_type"] == "pull-request"]
+    pipelines = [
+        item for item in observations
+        if item["source_type"] == "pipeline"
+        and str(item.get("state") or "").lower() in {"failed", "partially succeeded", "canceled"}
+    ]
+    incidents = [
+        item for item in observations
+        if item["source_type"] == "incident"
+        and str(item.get("severity") or "").lower() in {"2", "2.5", "sev2", "sev2.5"}
+    ]
+    changes = [item for item in observations if item["source_type"] in {"commit", "repository-change"}]
+    source_errors = [item for item in observations if item["source_type"] == "source-error"]
+    recent_jobs = rows(db.execute(
+        "SELECT id, created_at, updated_at, completed_at, employee, title, status, result_summary, blocker, thread_id "
+        "FROM jobs WHERE source = 'engineering-command' ORDER BY created_at DESC LIMIT 20"
+    ))
+    return {
+        "observations": observations,
+        "blockers": blockers,
+        "pullRequests": pull_requests,
+        "failingPipelines": pipelines,
+        "incidents": incidents,
+        "repositoryChanges": changes,
+        "sourceErrors": source_errors,
+        "recentQueries": recent_jobs,
+        "sources": configured_engineering_sources(),
+        "timeZone": engineering_timezone(),
+        "counts": {
+            "blockers": len(blockers),
+            "pullRequests": len(pull_requests),
+            "failingPipelines": len(pipelines),
+            "incidents": len(incidents),
+            "repositoryChanges": len(changes),
+            "sourceErrors": len(source_errors),
+        },
+        "serverTime": utc_now(),
+    }
+
+
+def queue_engineering_query(db: sqlite3.Connection, intent: str, repository: str = "") -> dict[str, str]:
+    normalized = str(intent or "").strip().lower()
+    if normalized not in ENGINEERING_QUERY_INTENTS:
+        raise ValueError(f"unsupported engineering query intent: {normalized}")
+    repository = str(repository or "").strip()
+    if normalized == "repo-changes" and not repository:
+        raise ValueError("repository is required for repo-changes")
+    visible = ENGINEERING_QUERY_INTENTS[normalized].format(repo=repository)
+    intent_rules = {
+        "blockers": "Combine blocked ADO work items, overdue tracked tasks, PR review/build blockers, failing pipelines, and active Sev2/Sev2.5 incident actions.",
+        "pull-requests": "Return authored active PRs, PRs awaiting the user's review, and PRs completed in the last seven days with votes, unresolved comments, policy/build state, conflicts, age, next action, and links.",
+        "failing-pipelines": "Return failing recent builds for configured pipelines and active PRs with definition, build, branch, commit, failing stage/job/task, first useful error, age, impact, and link.",
+        "sev2-incidents": "Return active or recently resolved Sev2/Sev2.5 incidents related to the configured user/teams with status, impact, mitigation, assigned actions, age, and IcM link.",
+        "repo-changes": f"For repository {repository}, summarize yesterday in {engineering_timezone()}: merged PRs, direct commits, changed components/files, authors, linked work items, and resulting build state.",
+    }[normalized]
+    instructions = (
+        f"ENGINEERING COMMAND for Reese: {visible}\n\n"
+        f"Intent: {normalized}\nRepository: {repository or 'not applicable'}\n"
+        f"Engineering sources from local configuration: {json.dumps(configured_engineering_sources())}\n\n"
+        f"{intent_rules}\n\n"
+        "Use only Scout-authenticated Azure DevOps and IcM tools. This is read-only: do not retry builds, comment on PRs, "
+        "update work items, or modify incidents. Ground every claim in retrieved evidence and include direct source links. "
+        "POST normalized findings to /api/engineering/observations with stable sourceSystem/sourceScope/sourceType/sourceId "
+        "values. Reconcile only completely enumerated scopes through coveredScopes. "
+        "Post actionable blockers or user decisions to /api/review-signals. Post to /api/work-ledger only when substantive "
+        "work by the user is verified complete. If any required source cannot be queried, create a source-error observation "
+        "and state that the answer is incomplete; never turn missing access into an all-clear. Report progress and the final "
+        "answer through /api/jobs/{jobId} in this same thread, with employee='Reese'."
+    )
+    result = create_chat_job(db, visible, title=visible, instructions=instructions)
+    db.execute("UPDATE jobs SET employee='Reese', source='engineering-command' WHERE id=?", (result["jobId"],))
+    db.execute("UPDATE chat_threads SET employee='Reese' WHERE id=?", (result["threadId"],))
+    queue_attention_major(db, "engineering-command", force=True)
+    return result
+
+
 def decode_json_list(value: Any) -> list[str]:
     if not value:
         return []
@@ -3790,6 +4130,10 @@ def get_state() -> dict[str, Any]:
                 ap_details = json.loads(ap.get("details_json") or "{}")
             except Exception:
                 ap_details = {}
+            if ap.get("action_type") == "task-tracking" and not any(
+                ap_details.get(key) for key in ("sourceUrl", "webLink", "webUrl", "url", "sourceLink", "link")
+            ):
+                ap_details["sourceUrl"] = configured_task_source_url(ap_details.get("originSourceType", ""))
             link = approval_source_link(ap.get("action_type", ""), ap_details if isinstance(ap_details, dict) else {})
             ap["sourceUrl"] = link.get("url", "")
             ap["sourceLabel"] = link.get("label", "")
@@ -3834,6 +4178,9 @@ def get_state() -> dict[str, Any]:
             "recentSweeps": recent_sweep_runs,
             "sweepStats": sweep_summary,
             "workLedgerToday": work_today,
+            "taskSources": configured_task_sources(),
+            "engineeringSources": configured_engineering_sources(),
+            "engineering": engineering_snapshot(db),
             "operatingLoop": OPERATING_LOOP,
             "decisionMemory": decision_memory_summary(db),
             "guardrails": build_guardrails(db),
@@ -4062,6 +4409,10 @@ class Handler(BaseHTTPRequestHandler):
             with connect() as db:
                 self.send_json({"sweeps": recent_sweeps(db, 100), "serverTime": utc_now()})
             return
+        if parsed.path == "/api/engineering/snapshot":
+            with connect() as db:
+                self.send_json(engineering_snapshot(db))
+            return
         if parsed.path == "/api/architecture-skill":
             self.serve_architecture_skill(parsed)
             return
@@ -4153,6 +4504,29 @@ class Handler(BaseHTTPRequestHandler):
                 entries = data.get("entries", [])
                 with connect() as db:
                     result = upsert_work_ledger_entries(db, entries)
+                self.send_json({"ok": True, **result})
+                return
+            if parsed.path == "/api/engineering/observations":
+                data = self.read_json()
+                observations = data.get("observations", [])
+                covered_scopes = data.get("coveredScopes") or []
+                with connect() as db:
+                    result = upsert_engineering_observations(
+                        db,
+                        observations,
+                        reconcile=bool(data.get("reconcile")),
+                        covered_scopes=covered_scopes,
+                    )
+                self.send_json({"ok": True, **result})
+                return
+            if parsed.path == "/api/engineering/query":
+                data = self.read_json()
+                with connect() as db:
+                    result = queue_engineering_query(
+                        db,
+                        str(data.get("intent") or ""),
+                        str(data.get("repository") or ""),
+                    )
                 self.send_json({"ok": True, **result})
                 return
             if parsed.path == "/api/civilians":
