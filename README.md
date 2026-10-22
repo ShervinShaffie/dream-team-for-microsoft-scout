@@ -4,6 +4,8 @@ Your own team of eight AI digital employees, running locally on Microsoft Scout.
 
 Version 4.3.1. See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
+Read the story behind it in **[I Gave Myself a Staff of 8 AI Employees To Run My Workday](https://cosi.pro/i-gave-myself-a-staff-of-8-ai-employees-to-run-my-workday)** on Collaboration Simplified.
+
 The Dream Team is a local command center plus a team of digital employees that run on [Microsoft Scout](https://learn.microsoft.com/en-us/microsoft-scout/). They watch your work signals, prep your meetings, draft your replies, keep a record of what you got done, and hold anything sensitive for your approval. It all runs on your own machine. Start with the built-in eight, add your own, or remove any of them except Major.
 
 Windows only. The app and the install run on Windows 10 and 11. They will not run on macOS or Linux. There is more in the Platform support section below.
